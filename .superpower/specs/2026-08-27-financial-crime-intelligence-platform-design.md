@@ -284,7 +284,9 @@ No transaction, `scenario_leakage_group_id`, or prohibited near-duplicate MAY cr
 
 The split builder MUST derive `scenario_leakage_group_id` before chronological assignment. It MUST use union-find over verified stable customer/account identifiers and source scenario identifiers: all customers/accounts belonging to the same generated or labelled AML scenario are unioned, scenario aliases or cross-bank copies with common generator/provenance identity are unioned, and transitive connections form one component. The ID MUST be the SHA-256 of the sorted dataset revision, stable member IDs, and source scenario/provenance IDs. Every scenario-linked transaction, label, duplicate/copy, and derived subgraph in one component MUST remain in one set. Non-scenario events for a continuing account MAY follow their chronological set under cutoff-truncated state; they MUST NOT expose the component’s future label or outcome.
 
-The split algorithm MUST assign complete scenario leakage groups, then apply chronological boundaries to remaining events, and MUST purge a documented boundary interval large enough to prevent lookback windows from reading across sets. A separate optional **cold-start evaluation** MAY group all events by stable customer/account connected component and assign each entity group to exactly one set. Cold-start results MUST be reported separately and MUST NOT replace or be conflated with the primary temporal evaluation.
+The split algorithm MUST assign complete scenario leakage groups using one immutable scenario group anchor. The default `scenario_group_anchor_time` is the maximum event time inside the `scenario_leakage_group_id` after de-duplication. A different anchor rule MAY be used only when it is documented, signed, and content-hashed in the Phase 0 split configuration before labels, metrics, or set counts are inspected. The complete group MUST be assigned to the chronological set containing its anchor. A boundary-spanning scenario group MUST follow the predeclared scenario group anchor/boundary policy: assign the whole group by anchor when all scored events stay outside purge intervals, or exclude/quarantine the whole group from headline sets when the policy says boundary contamination risk is too high. It MUST never be split.
+
+For scored events versus historical context, a transaction may have exactly one role in a split manifest: `SCORED_EVENT`, `HISTORICAL_CONTEXT_ONLY`, or `EXCLUDED_BOUNDARY_GROUP`. Earlier pre-cutoff events from a group assigned to a later set MAY be used only as historical context for later-set scoring and MUST NOT be scored, trained, calibrated, or counted as earlier-set labels. Later or post-cutoff events MUST never be context for earlier scores. The split algorithm MUST then apply chronological boundaries to remaining non-scenario events and MUST purge a documented boundary interval large enough to prevent lookback windows from reading across sets. A separate optional **cold-start evaluation** MAY group all events by stable customer/account connected component and assign each entity group to exactly one set. Cold-start results MUST be reported separately and MUST NOT replace or be conflated with the primary temporal evaluation.
 
 ### 8.2 Split proof and manifest
 
@@ -293,9 +295,12 @@ The split manifest MUST record:
 - dataset and mapping hashes;
 - event-time boundaries and purge durations;
 - scenario grouping, union-find inputs, cross-bank copy/provenance rules, and `scenario_leakage_group_id` method;
+- scenario group anchors, full group time spans, boundary policy decision, excluded/quarantined group IDs, and reason codes;
 - transaction, account, scenario, positive, negative, and unknown counts per set;
+- per-set `SCORED_EVENT`, `HISTORICAL_CONTEXT_ONLY`, and `EXCLUDED_BOUNDARY_GROUP` counts;
 - cross-set intersection counts, all required to equal zero for transactions and scenario groups;
 - account/customer overlap counts and rates for every set pair, overlap policy, cutoff-truncation proof, label-isolation proof, and causal state-reset/continuation policy;
+- automated proof that no post-cutoff scenario event, label, outcome, feature, edge, or normalization statistic from a later set is visible to any earlier-set score;
 - cold-start entity-group intersections and results when that optional evaluation runs;
 - time-range and lookback checks;
 - unknown-typology exclusion proof;
@@ -343,7 +348,7 @@ Comparisons MUST report paired uncertainty at the scenario-group level and the p
 
 ### 8.6 Null champion
 
-Champion selection MUST apply frozen minimum gates for data integrity, calibration, alert volume, scenario coverage, latency, reproducibility, and governance. If every candidate fails any mandatory gate, `champion_model_id` MUST be `null`. The platform MAY run deterministic rules or a clearly labeled research baseline locally, but MUST NOT relabel it as a successful model outcome.
+Champion selection MUST apply frozen minimum gates for data integrity, calibration, alert volume, scenario coverage, latency, reproducibility, and governance. If every candidate fails any mandatory gate, the Phase 7 completion manifest MUST record `selected_model = null`, `champion = null`, and the stopped/skipped branch evidence. The platform MAY run deterministic rules or a clearly labeled research baseline locally, but MUST NOT relabel it as a champion unless it passed the frozen promotion gates.
 
 ---
 
@@ -351,35 +356,40 @@ Champion selection MUST apply frozen minimum gates for data integrity, calibrati
 
 ### 9.1 Conditional progression
 
-Research MUST progress through evidence-gated stages rather than implementing every model in advance:
+Research MUST progress through evidence-gated branches rather than implementing every model in advance. The stable branch IDs are normative: `RULE_TABULAR`, `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, `STATIC_GNN`, `TGN`, `HGT`, `HYBRID_TGN_HGT`, and `CALIBRATION_FUSION`.
 
-| Stage | Minimum artifact | Gate to next stage |
-|---|---|---|
-| Rules | deterministic typology/risk rules and alert-volume baseline | reproducible labels, causal features, useful error taxonomy |
-| Tabular | logistic regression and one tree-based baseline | measurable validation value beyond rules within compute budget |
-| Anomaly | Isolation Forest or equivalent bounded anomaly baseline | incremental novelty evidence without unacceptable alert volume |
-| Static graph | one GraphSAGE/GAT-class baseline and one bounded graph anomaly candidate | verified graph construction and incremental validation hypothesis |
-| Temporal | one TGN-style baseline | event-time profiling and value beyond static/behavioral baselines |
-| Heterogeneous | HGT-style relation-aware baseline only if multiple verified node/edge types exist | verified heterogeneity and tractable resource use |
-| Hybrid | typed TGN memory plus relation-aware HGT-style attention as a research hypothesis | all simpler gates pass and the hybrid addresses a documented residual error |
+Before any branch can read its result metrics or any holdout, the model approver MUST sign and content-hash a branch-specific `pre-execution gate manifest`. That manifest MUST include branch ID, input artifacts, exact metric direction, numerical thresholds, uncertainty interval method, effect-size and minimum practical improvement, alert-volume budget, compute/memory/time ceilings, required repetitions and seeds, stop/proceed/skip logic, and dependency-outcome rules. Measured results MUST append to a separate immutable decision record; they MUST NOT rewrite the frozen gate manifest.
+
+The explicit prerequisite/outcome matrix is:
+
+| Branch ID | Work package | Prerequisites | Eligible predecessor outcomes | Execute/skip rule | Downstream path |
+|---|---|---|---|---|---|
+| `RULE_TABULAR` | deterministic rules, logistic regression, and one tree baseline | Phase 0 GO, Phase 2 event contracts, Phase 3 labels/splits | none | Executes when prerequisites pass; otherwise emits `SKIPPED_BY_DEPENDENCY` | `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, `CALIBRATION_FUSION` |
+| `BEHAVIOR_ANOMALY` | bounded behavioral anomaly baseline | `RULE_TABULAR` decision record and Phase 4 causal features when required by the manifest | `RULE_TABULAR` is `PROCEED` or `STOP` | Executes when its frozen manifest has valid inputs; skips only when prerequisite artifacts are missing or invalid | `TGN`, `CALIBRATION_FUSION` |
+| `GRAPH_ANOMALY` | bounded graph anomaly candidate | `RULE_TABULAR` decision record and verified Phase 0 graph support | `RULE_TABULAR` is `PROCEED` or `STOP` | Executes only when graph construction is supported and within frozen resource ceilings; otherwise skips | `STATIC_GNN`, `HGT`, `CALIBRATION_FUSION` |
+| `STATIC_GNN` | one GraphSAGE/GAT-class static graph baseline | `GRAPH_ANOMALY` decision record and causal graph builder | `GRAPH_ANOMALY` is `PROCEED` or `STOP` | Executes when static graph tensors meet the manifest's size and leakage gates; otherwise skips | `HGT`, `CALIBRATION_FUSION` |
+| `TGN` | one event-time TGN-style baseline | `BEHAVIOR_ANOMALY` decision record and Phase 4 online/offline parity | `BEHAVIOR_ANOMALY` is `PROCEED` or `STOP` | Executes when temporal windows and replay package meet frozen ceilings; otherwise skips | `HYBRID_TGN_HGT`, `CALIBRATION_FUSION` |
+| `HGT` | HGT-style relation-aware baseline | `STATIC_GNN` decision record and Phase 0 verified heterogeneous node/edge types | `STATIC_GNN` is `PROCEED` or `STOP` | Executes only when heterogeneity support and resource gates pass; otherwise skips | `HYBRID_TGN_HGT`, `CALIBRATION_FUSION` |
+| `HYBRID_TGN_HGT` | typed TGN memory plus relation-aware HGT-style attention hypothesis | `TGN` and `HGT` decision records | both `TGN` and `HGT` are `PROCEED` | Executes only when both predecessors proceed and the manifest names the residual error and numerical target; otherwise skips | `CALIBRATION_FUSION` |
+| `CALIBRATION_FUSION` | Phase 7 candidate or null research protocol | decision records for all prior branch IDs | any complete set of `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY` records | Executes candidate path when at least one accepted candidate passes frozen promotion gates; executes null path when none survives | Phase 7 completion manifest |
 
 Graph anomaly candidates such as PyGOD implementations MAY be reused after license, interface, scale, and memory checks. A candidate list is not an implementation commitment.
 
-Every stage and every separately gated branch MUST emit exactly one decision: `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY`. The decision record MUST name the stage/branch, accepted input artifact, dependency decisions, measured gate values, rationale, claim boundary, owner, reviewer, timestamp, Git SHA, artifact hashes, and next eligible stage; it MUST be signed by the model approver and content-hashed. `SKIPPED_BY_DEPENDENCY` means no implementation or result is claimed for that stage. Later-stage deliverables are conditional on `PROCEED`; a valid `STOP` or `SKIPPED_BY_DEPENDENCY` record satisfies roadmap dependency accounting and routes evaluation to the last accepted simpler model.
+Every stage and every separately gated branch MUST emit exactly one decision: `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY`. The decision record MUST name the stage/branch, accepted input artifact, dependency decisions, frozen gate-manifest hash, measured gate values, rationale, claim boundary, owner, reviewer, timestamp, Git SHA, artifact hashes, and next eligible stage; it MUST be signed by the model approver and content-hashed. `SKIPPED_BY_DEPENDENCY` means no implementation or result is claimed for that stage. Later-stage deliverables are conditional on the matrix above; a valid `STOP` or `SKIPPED_BY_DEPENDENCY` record satisfies roadmap dependency accounting and routes evaluation to `CALIBRATION_FUSION`, either with the last accepted simpler model or with the null path.
 
 ### 9.2 Compute profile
 
-Before each graph or temporal stage, a profile manifest MUST record sample size, graph size, temporal span, hardware, software lock, wall time, peak RAM/VRAM, storage, throughput, estimated full-run cost, and failure behavior. Full-scale execution MUST NOT start when projected resource use exceeds declared capacity or leaves less than 20% free storage headroom.
+Before each graph or temporal stage, a profile manifest MUST record sample size, graph size, temporal span, hardware, software lock, wall time, peak RAM/VRAM, storage, throughput, estimated full-run cost, and failure behavior. Full-scale execution MUST NOT start when projected resource use exceeds the pre-execution gate manifest's frozen capacity values or leaves less than 20% free storage headroom.
 
 ### 9.3 Stop conditions
 
 A stage MUST stop and publish its result when any of these applies:
 
 - required source support or causal construction is absent;
-- the prior stage already meets the predeclared research objective and the next stage lacks a distinct hypothesis;
-- validation improvement is below the practical-effect threshold or uncertainty includes no meaningful gain;
-- alert volume, calibration, reproducibility, or explainability worsens beyond its gate;
-- projected runtime, memory, storage, or local scoring latency exceeds the approved budget;
+- the predecessor branch already meets the pre-execution gate manifest's frozen research objective and the next branch lacks a manifest-defined distinct hypothesis;
+- validation improvement is below the frozen minimum practical improvement or fails the frozen uncertainty interval criterion;
+- alert volume, calibration, reproducibility, or explainability crosses the manifest's numerical stop threshold;
+- projected runtime, memory, storage, or local scoring latency exceeds the frozen compute ceiling;
 - two bounded remediation attempts fail for the same technical constraint;
 - the model cannot be packaged and replayed deterministically.
 
@@ -429,7 +439,7 @@ A scoring attempt MUST return one of:
 - `ABSTAINED` with a versioned reason and available evidence;
 - `FAILED_CLOSED` with a typed failure reason and no synthetic score.
 
-Every scoring attempt MUST have a unique, deterministic `risk_decision_id` derived from the transition ID, scored subject, scoring-package version, and decision-contract version. That ID is the sole transport-idempotency key for alerts and case ingestion.
+Every scoring attempt MUST have a unique, deterministic `risk_decision_id` derived from the original event ID, `state_generation_id`, `replay_run_id`, scored subject, feature/rule/model/calibration/fusion/threshold versions, and decision-contract version. A normal delivery retry within the same state generation and replay run MUST reuse the same `risk_decision_id`. A controlled correction replay that changes state, features, model/rule versions, or evidence lineage MUST create a new `risk_decision_id`, link to any prior decision through `supersedes_decision_id` or a typed retraction reason, and preserve the prior decision and audit trail. That ID is the sole transport-idempotency key for alerts and case ingestion.
 
 Risk inputs MAY include deterministic rules, supervised probability, behavioral anomaly, graph anomaly, temporal anomaly, and typology confidence. Only components present in the frozen model package MAY contribute. Missing mandatory input MUST produce `FAILED_CLOSED`; optional unavailable input MUST follow the package’s predeclared abstention rule.
 
@@ -518,20 +528,22 @@ Features and graph state MUST use event time. Ingest time is audit metadata only
 
 ### 12.3 Idempotency and offset coordination
 
-Stable `event_id` is the source idempotency key. Each entity mutation MUST also have a deterministic `transition_id` derived from `event_id`, `entity_id`, and transition-contract version. Duplicate payload hashes MUST be no-ops; the same ID with a different payload hash MUST be quarantined as a conflict.
+Stable `event_id` is the source delivery idempotency key. Each stateful execution MUST also declare a deterministic `state_generation_id` for the entity-state lineage and a deterministic `replay_run_id` for the replay or correction run. The default live path uses the current approved state generation and `replay_run_id = live`. A normal delivery retry of the same event in the same generation MUST keep the same `transition_id`, `risk_decision_id`, and `evidence_package_id`. A controlled late-event replay or correction MUST create a new `state_generation_id` or `replay_run_id`, and every affected entity mutation MUST get a new deterministic `transition_id` derived from the original `event_id`, `entity_id`, `state_generation_id`, `replay_run_id`, feature/rule/model versions that affect state, and transition-contract version. Duplicate payload hashes within the same lineage MUST be no-ops; the same lineage ID with a different payload hash MUST be quarantined as a conflict.
 
-Before advancing Redis, the worker MUST commit an atomically durable per-event transition/result record, `EventTransitionResult`, in PostgreSQL. The record MUST be unique by `transition_id` and contain the input/payload hash, source topic/partition/offset, prior and next state versions/hashes, deterministic state transition, the complete canonical `RiskDecision` and `EvidencePackage` payloads, required sink intents, outbox messages with deterministic IDs, completion receipts, and processing status. The durable complete payload MUST be stored either inline in that PostgreSQL transaction or in a verified content-addressed blob uploaded and read-back-verified before the transaction, with its immutable URI, media/schema version, byte length, and SHA-256 atomically recorded in the row. Metadata, hash, or artifact intent without the retrievable complete payload is insufficient and MUST block Redis advancement. Its input, transition, and result payloads MUST be immutable after creation; processing status and receipts MAY advance monotonically through compare-and-set updates or append-only child records. PostgreSQL is the processing-continuation source of truth; Redis is a rebuildable projection and a Kafka offset is only a consumption cursor.
+A correction execution MUST create new immutable `RiskDecision` and `EvidencePackage` artifacts, including a new `risk_decision_id` and `evidence_package_id`, derived from the original event ID, `state_generation_id`, `replay_run_id`, scored subject, feature/rule/model/calibration/fusion/threshold versions, and contract versions. It MUST NOT mutate prior transition, decision, evidence, case, or audit artifacts. The new artifacts MUST carry `supersedes_decision_id` and `supersedes_evidence_package_id` when they replace a prior artifact, or a typed retraction link when the corrected execution withdraws the prior score without a replacement. They MUST also include correction reason, correction source event, approver when manual approval is required, and prior artifact hashes.
+
+Before advancing Redis, the worker MUST commit an atomically durable per-event transition/result record, `EventTransitionResult`, in PostgreSQL. The record MUST be unique by `transition_id` and contain the `state_generation_id`, `replay_run_id`, input/payload hash, source topic/partition/offset, prior and next state versions/hashes, deterministic state transition, the complete canonical `RiskDecision` and `EvidencePackage` payloads, supersession/retraction links when present, required sink intents, outbox messages with deterministic IDs, completion receipts, and processing status. The durable complete payload MUST be stored either inline in that PostgreSQL transaction or in a verified content-addressed blob uploaded and read-back-verified before the transaction, with its immutable URI, media/schema version, byte length, and SHA-256 atomically recorded in the row. Metadata, hash, or artifact intent without the retrievable complete payload is insufficient and MUST block Redis advancement. Its input, transition, and result payloads MUST be immutable after creation; processing status and receipts MAY advance monotonically through compare-and-set updates or append-only child records. PostgreSQL is the processing-continuation source of truth; Redis is a rebuildable projection and a Kafka offset is only a consumption cursor.
 
 For each consumed record, the worker MUST:
 
 1. validate and compute a deterministic state transition;
-2. in one PostgreSQL transaction, create or verify the durable `EventTransitionResult`, persist the complete canonical decision/evidence payload or its verified content-addressed blob reference, and persist every required sink intent/outbox message;
+2. in one PostgreSQL transaction, create or verify the durable `EventTransitionResult` for the exact `state_generation_id` and `replay_run_id`, persist the complete canonical decision/evidence payload or its verified content-addressed blob reference, and persist every required sink intent/outbox message;
 3. after that transaction commits, apply the state transition to Redis using compare-and-set on the prior state version/hash and record `transition_id` as the applied marker;
 4. persist state-application progress, deliver required locally owned sinks/outbox messages idempotently, and persist their receipts against the same record;
 5. mark the record `COMPLETE` only after the Redis state version/hash is verified, decision/evidence are durable, and every required sink/outbox receipt exists;
 6. commit the Kafka offset only after the record is `COMPLETE`.
 
-A retry MUST first load `EventTransitionResult` and verify/read its complete canonical payload. If Redis already shows the same applied `transition_id` and next-state hash, the retry MUST NOT apply state again; it MUST reconstruct any missing decision/evidence artifact or sink message from that durable payload, then resume required sink delivery, outbox publication, receipt recording, and completion work before committing the Kafka offset. A missing or hash-invalid payload and a different Redis version/hash MUST fail closed and trigger reconciliation or replay. An event MUST NOT be marked fully processed solely because Redis state advanced.
+A retry MUST first load `EventTransitionResult` by `transition_id`, `state_generation_id`, and `replay_run_id` and verify/read its complete canonical payload. If Redis already shows the same applied lineage marker and next-state hash, the retry MUST NOT apply state again; it MUST reconstruct any missing decision/evidence artifact or sink message from that durable payload, then resume required sink delivery, outbox publication, receipt recording, and completion work before committing the Kafka offset. A missing or hash-invalid payload and a different Redis version/hash MUST fail closed and trigger reconciliation or replay. An event MUST NOT be marked fully processed solely because Redis state advanced.
 
 Crash recovery MUST follow these boundaries:
 
@@ -545,13 +557,13 @@ Kafka transactional production MAY be used for Kafka-only consume/produce paths.
 
 ### 12.4 Deterministic replay
 
-A replay manifest MUST pin source offsets/artifact hashes, schema/mapping/feature/rule/model/calibration/threshold versions, partition count and key function, event-time policy, checkpoint, environment lock, and Git SHA. Replay equivalence means exact equality of the canonical `RiskDecision` and `EvidencePackage` SHA-256 hashes defined in Section 14.3. Deterministic event time and evidence cutoff time are hashed; operational processing/creation timestamps, delivery receipts, retries, and sink status are excluded from those content hashes and compared only as audit metadata. A divergence in either canonical hash MUST fail the replay gate and emit a comparison artifact.
+A replay manifest MUST pin `state_generation_id`, `replay_run_id`, source offsets/artifact hashes, schema/mapping/feature/rule/model/calibration/threshold versions, partition count and key function, event-time policy, checkpoint, environment lock, and Git SHA. Replay equivalence means exact equality of the canonical `RiskDecision` and `EvidencePackage` SHA-256 hashes defined in Section 14.3 for the same lineage. Deterministic event time, evidence cutoff time, state generation, replay run, and supersession/retraction links are hashed; operational processing/creation timestamps, delivery receipts, retries, and sink status are excluded from those content hashes and compared only as audit metadata. A divergence in either canonical hash MUST fail the replay gate and emit a comparison artifact.
 
 ### 12.5 Redis persistence and recovery
 
 Redis MUST use append-only persistence with `appendfsync everysec` plus periodic RDB snapshots for the local reference profile. The declared target is an RPO of at most one second for acknowledged Redis projection updates and an RTO of at most 30 minutes for the documented local benchmark dataset. Kafka history and versioned checkpoints remain the recovery basis.
 
-Backup artifacts MUST be hashed, encrypted at rest where supported, and restore-tested at least once per release candidate. A restore drill MUST rebuild Redis, resume from the recorded offsets, reconcile PostgreSQL/outbox state, and compare state and decision hashes. Targets are requirements until measured; reports MUST publish actual values and PASS/FAIL.
+Backup artifacts MUST be hashed and restore-tested at least once per release candidate. Sensitive backup classes MUST be encrypted at rest. Public-synthetic-only artifacts MAY omit at-rest encryption only with an approved backup encryption exception record naming classification, owner, approver, scope, rationale, compensating controls, expiry or review date, and audit ID. Absence of platform encryption support alone is not sufficient for an exception. A restore drill MUST rebuild Redis, resume from the recorded offsets, reconcile PostgreSQL/outbox state, and compare state and decision hashes. Targets are requirements until measured; reports MUST publish actual values and PASS/FAIL.
 
 ### 12.6 Eventual-consistency states
 
@@ -606,7 +618,7 @@ The gate MUST fail if the workload, error rate, sample size, or environment is o
 
 Every `SCORED` risk decision and every case snapshot MUST reference an immutable `EvidencePackage` containing:
 
-- package ID, schema version, deterministic decision event time, evidence cutoff time, subject ID/type, and content hash;
+- `evidence_package_id`, schema version, deterministic decision event time, evidence cutoff time, subject ID/type, and content hash;
 - source dataset/event IDs and payload hashes;
 - model, rule, feature, graph-state, calibration, fusion, and threshold versions;
 - component scores, final score, decision status, and reason codes;
@@ -640,9 +652,9 @@ Supported initial types are `TRANSACTION_FACT`, `BEHAVIORAL_FEATURE`, `RULE_HIT`
 
 All decision and evidence content hashes MUST use SHA-256 over UTF-8 JSON Canonicalization Scheme serialization (RFC 8785). Producers MUST normalize Unicode strings to NFC before serialization, encode monetary/decimal values as canonical base-10 strings without exponent notation, encode deterministic times as UTC RFC 3339 with fixed microsecond precision, sort semantic sets by their stable IDs, and preserve schema-declared array order where order is meaningful.
 
-The canonical `RiskDecision` hash MUST cover exactly: schema version; `risk_decision_id`; subject ID/type; source event IDs and payload hashes; decision event time; evidence cutoff time; model, rule, feature, graph-state, calibration, fusion, and threshold versions; component scores; final score; decision status; reason codes; EvidencePackage content hash; producer Git SHA; and replay-manifest ID.
+The canonical `RiskDecision` hash MUST cover exactly: schema version; `risk_decision_id`; original event ID; `state_generation_id`; `replay_run_id`; subject ID/type; source event IDs and payload hashes; decision event time; evidence cutoff time; model, rule, feature, graph-state, calibration, fusion, and threshold versions; component scores; final score; decision status; reason codes; EvidencePackage content hash; `supersedes_decision_id` or typed retraction link when present; `supersedes_evidence_package_id` when present; correction reason when present; producer Git SHA; and replay-manifest ID.
 
-The canonical `EvidencePackage` hash MUST cover exactly: schema version; subject ID/type; decision event time; evidence cutoff time; source dataset/event IDs and payload hashes; model, rule, feature, graph-state, calibration, fusion, and threshold versions; component/final scores; decision status/reasons; evidence-item content hashes in canonical order; extraction limits; truncation flags; completeness watermark; failure/degradation state; producer Git SHA; and replay-manifest ID. `package_id` MUST be derived from this hash and MUST NOT be hashed into itself.
+The canonical `EvidencePackage` hash MUST cover exactly: schema version; original event ID; `state_generation_id`; `replay_run_id`; subject ID/type; decision event time; evidence cutoff time; source dataset/event IDs and payload hashes; model, rule, feature, graph-state, calibration, fusion, and threshold versions; component/final scores; decision status/reasons; evidence-item content hashes in canonical order; extraction limits; truncation flags; completeness watermark; failure/degradation state; `supersedes_evidence_package_id` or typed retraction link when present; correction reason when present; producer Git SHA; and replay-manifest ID. `evidence_package_id` MUST be derived from this hash and MUST NOT be hashed into itself.
 
 Each evidence-item hash MUST cover exactly: evidence type; source references and source event times; typed value/unit or bounded entity/edge/path references; derivation name/version/parameters; deterministic summary; sensitivity classification; and authorization scope. `evidence_id` MUST be derived from the item hash and MUST NOT be hashed into itself.
 
@@ -659,16 +671,19 @@ V1 case states are `NEW`, `TRIAGED`, `INVESTIGATING`, `PENDING_REVIEW`, `CLOSED_
 | Command | Valid source state | Authorized actor | Result and mandatory data |
 |---|---|---|---|
 | `CREATE_CASE` | no case | case-ingestion system principal | `NEW`; originating `risk_decision_id` and evidence version |
+| `ATTACH_RISK_OCCURRENCE` | any case state | case-ingestion system principal | state unchanged unless correction materiality rules below require `PENDING_REVIEW` or `REOPENED`; occurrence `risk_decision_id`, `evidence_package_id`, lineage IDs, prior case/evidence version, correlation key, and supersession/retraction links when present |
 | `ASSIGN_CASE` / `REASSIGN_CASE` | `NEW`, `TRIAGED`, `INVESTIGATING`, `REOPENED` | Analyst with queue-assignment permission | state unchanged; assignee, reason, SLA recalculation |
 | `TRIAGE_CASE` | `NEW` | assigned Analyst | `TRIAGED`; priority and triage reason |
 | `START_INVESTIGATION` | `TRIAGED`, `REOPENED` | assigned Analyst | `INVESTIGATING`; investigation-start timestamp |
 | `ADD_NOTE_OR_EVIDENCE` | `INVESTIGATING` | assigned Analyst | state unchanged; append-only note/evidence version |
+| `MERGE_CASES` | two or more cases in `NEW`, `TRIAGED`, `INVESTIGATING`, `REOPENED`, `PENDING_REVIEW`, closed states, or `ESCALATED` | Analyst with case-merge permission for active cases; Reviewer required if any source is `PENDING_REVIEW`, closed, or `ESCALATED` | one survivor case in the authorized target state; all source case IDs, case versions, evidence versions/snapshots, merge reason, target owner/SLA, and provenance links |
+| `SPLIT_CASE` | `TRIAGED`, `INVESTIGATING`, `REOPENED`, `PENDING_REVIEW`, closed states, or `ESCALATED` | Analyst with case-split permission for active cases; Reviewer required for `PENDING_REVIEW`, closed, or `ESCALATED` cases | source case plus one or more resulting cases with authorized states; moved occurrence IDs, case/evidence versions, split reason, new owners/SLA, and provenance links |
 | `SUBMIT_PROPOSED_DISPOSITION` | `INVESTIGATING` | assigned Analyst | `PENDING_REVIEW`; one proposed disposition, reason, and immutable evidence snapshot |
 | `APPROVE_PROPOSED_DISPOSITION` | `PENDING_REVIEW` | Reviewer who did not submit the proposal | `CONFIRMED_SUSPICIOUS` -> `CLOSED_CONFIRMED_SUSPICIOUS`; `FALSE_POSITIVE` -> `CLOSED_FALSE_POSITIVE`; `INSUFFICIENT_EVIDENCE` -> `CLOSED_INSUFFICIENT_EVIDENCE`; `ESCALATE` -> `ESCALATED` |
 | `REJECT_PROPOSED_DISPOSITION` | `PENDING_REVIEW` | Reviewer who did not submit the proposal | `INVESTIGATING`; rejection reason and required follow-up |
 | `REOPEN_CASE` | any three closed states or `ESCALATED` | Reviewer | `REOPENED`; new-evidence or quality-review reason and new evidence snapshot |
 
-There is no direct `NEW`/`TRIAGED` to closed transition, and an Analyst MUST NOT approve a disposition. Every command MUST pass server-side role, object, assignment, sensitivity, and state authorization; supply the last observed `case_version` and the command-specific evidence version or snapshot; append an atomic audit event; and record actor, role, command, timestamp, previous/new state, reason, prior and resulting case versions, and prior and resulting evidence versions. `CREATE_CASE` stores the originating evidence version; assignment, triage, and start commands record the evidence version observed for the action; note/evidence commands create a successor evidence version; disposition proposal and reviewer commands reference the immutable proposal snapshot; and reopen references the new evidence snapshot or approved quality-review snapshot. Invalid state/version or stale evidence version MUST return `409 Conflict`; denied authority MUST return `403 Forbidden`; neither outcome may mutate the case. `REOPENED` MUST pass through `START_INVESTIGATION` before another disposition proposal.
+There is no direct `NEW`/`TRIAGED` to closed transition, and an Analyst MUST NOT approve a disposition. Every command MUST pass server-side role, object, assignment, sensitivity, and state authorization; supply the last observed `case_version` and the command-specific evidence version or snapshot; append an atomic audit event; and record actor, role, command, timestamp, previous/new state, reason, prior and resulting case versions, prior and resulting evidence versions, and lineage IDs where present. `CREATE_CASE` stores the originating evidence version; `ATTACH_RISK_OCCURRENCE` records the occurrence and evidence version it attaches; assignment, triage, and start commands record the evidence version observed for the action; note/evidence commands create a successor evidence version; merge/split commands record every source and resulting case/evidence version; disposition proposal and reviewer commands reference the immutable proposal snapshot; and reopen references the new evidence snapshot or approved quality-review snapshot. Invalid state/version or stale evidence version MUST return `409 Conflict`; denied authority MUST return `403 Forbidden`; neither outcome may mutate the case. `REOPENED` MUST pass through `START_INVESTIGATION` before another disposition proposal.
 
 ### 15.2 Assignment, SLA, and aging
 
@@ -682,13 +697,16 @@ Alert transport idempotency MUST use unique `risk_decision_id`. Redelivery of th
 
 Every distinct `risk_decision_id` MUST be retained as a separate occurrence. If correlation attaches or suppresses it into an existing alert/case rather than creating another queue item, the system MUST increment the occurrence count and append a new evidence version and immutable occurrence/history record. It MUST NOT silently discard a distinct risk decision.
 
+Correction occurrences MUST be reconciled through `ATTACH_RISK_OCCURRENCE` using the new lineage IDs. The command MUST mark the superseded or retracted decision/evidence as non-current without deletion, attach the correction occurrence, recompute case priority and the current evidence view, preserve analyst notes, assignments, dispositions, and review history, and emit an audit event naming the correction reason and prior/current artifact IDs. If a material correction invalidates a proposed disposition, the case MUST return to `PENDING_REVIEW` with the corrected evidence snapshot. If a material correction invalidates an approved terminal disposition or escalation, the case MUST move to `REOPENED` under reviewer authority or an approved automated quality-control policy. Retries are idempotent on the new `risk_decision_id`, `evidence_package_id`, `state_generation_id`, and `replay_run_id`.
+
 Case grouping MAY combine related alerts only through a deterministic, bounded rule. Merge and split MUST:
 
 - retain source case IDs and immutable histories;
 - create new lifecycle events and evidence snapshots;
 - preserve disposition provenance;
 - recalculate assignment/SLA explicitly;
-- never delete the pre-merge or pre-split record.
+- never delete the pre-merge or pre-split record;
+- link every resulting case to source case IDs, moved or retained occurrence IDs, source and resulting evidence snapshots, actor, authorization decision, optimistic-concurrency versions, and audit event IDs.
 
 ### 15.4 Optimistic concurrency
 
@@ -1032,25 +1050,25 @@ Each phase MUST use a short-lived branch and pull request, stage exact paths, pa
 ### Phase 5 — Static graph and anomaly research
 
 - **Purpose:** test whether bounded graph/anomaly methods add justified value.
-- **Deliverables:** conditional branch outputs: when its preceding decision is `PROCEED`, build the causal graph and run the approved bounded anomaly and/or static-GNN candidate; otherwise emit `SKIPPED_BY_DEPENDENCY` without claiming an implementation. Each executed branch produces its compute profile and comparison.
-- **Dependencies:** Phase 3 decision records; the static-graph branch additionally requires verified Phase 0 graph support.
-- **Exit gate:** every anomaly/static branch has reproducible artifacts plus a signed/hashed `PROCEED` or `STOP` record, or a valid `SKIPPED_BY_DEPENDENCY` record; absence of gain is acceptable.
+- **Deliverables:** branch records for `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, and `STATIC_GNN` following the Section 9 explicit prerequisite/outcome matrix. Executed branches produce compute profiles, comparison artifacts, and signed/content-hashed decisions; skipped branches emit `SKIPPED_BY_DEPENDENCY` with dependency evidence.
+- **Dependencies:** `RULE_TABULAR` decision record; `GRAPH_ANOMALY` and `STATIC_GNN` also require verified Phase 0 graph support.
+- **Exit gate:** each named branch has reproducible artifacts plus a signed/hashed `PROCEED` or `STOP` record, or a valid `SKIPPED_BY_DEPENDENCY` record tied to its frozen pre-execution gate manifest.
 - **Git/GitHub milestone:** `research/phase-5-static-graph` PR with artifact hashes.
 
 ### Phase 6 — Temporal, heterogeneous, and hybrid research
 
 - **Purpose:** test progressively gated TGN, HGT, and hybrid hypotheses.
-- **Deliverables:** TGN-style baseline only after its prerequisite `PROCEED`; HGT only after verified heterogeneity and a relevant `PROCEED`; typed-TGN/HGT hybrid only after all named prerequisite branches `PROCEED`. Each ineligible branch emits `SKIPPED_BY_DEPENDENCY`; executed branches produce profiling and comparisons.
-- **Dependencies:** Phase 4 causal state and Phase 5 branch decision records.
-- **Exit gate:** every branch has package/replay and uncertainty evidence plus a signed/hashed `PROCEED` or `STOP` record, or a valid `SKIPPED_BY_DEPENDENCY` record; no success is presumed.
+- **Deliverables:** branch records for `TGN`, `HGT`, and `HYBRID_TGN_HGT` following the Section 9 explicit prerequisite/outcome matrix. Executed branches produce profiling, package/replay compatibility evidence, comparison artifacts, and signed/content-hashed decisions; skipped branches emit `SKIPPED_BY_DEPENDENCY` with dependency evidence.
+- **Dependencies:** Phase 4 causal state plus `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, and `STATIC_GNN` decision records as specified by branch ID.
+- **Exit gate:** every named branch has package/replay and uncertainty evidence plus a signed/hashed `PROCEED` or `STOP` record, or a valid `SKIPPED_BY_DEPENDENCY` record tied to its frozen pre-execution gate manifest; no success is presumed.
 - **Git/GitHub milestone:** `research/phase-6-temporal-hybrid` PR.
 
 ### Phase 7 — Calibration and final research protocol
 
 - **Purpose:** freeze candidates and execute the approved evaluation exactly once.
-- **Deliverables:** calibration/fusion and frozen thresholds for the last accepted candidate, which MAY be rules/tabular; final temporal test; unknown-typology; AMLSim stress; ablations only for implemented parts; model/data cards; champion or null decision.
-- **Dependencies:** an accepted Phase 3 candidate plus signed/hashed Phase 5 and Phase 6 `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY` records. Phase 7 MUST NOT require an advanced model that a valid dependency decision skipped.
-- **Exit gate:** isolation audit, immutable manifests, uncertainty, negative-result publication, and model-approver decision.
+- **Deliverables:** `CALIBRATION_FUSION` completion manifest with one of two paths. Candidate path calibrates/fuses the accepted candidate and freezes thresholds before one permitted final temporal test execution. Null path records `selected_model = null`, `champion = null`, why every branch stopped or was skipped, whether the final temporal test remains sealed, model/data cards with limitations, and negative-result publication. The final temporal test MUST remain sealed by default on the null path unless a pre-registered null-result protocol explicitly requires one execution.
+- **Dependencies:** signed/hashed decision records for `RULE_TABULAR`, `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, `STATIC_GNN`, `TGN`, `HGT`, and `HYBRID_TGN_HGT`, each with `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY`.
+- **Exit gate:** isolation audit, immutable manifests, uncertainty, negative-result publication, and model-approver decision. The release/research-completion gates MUST accept an honest null Phase 7 completion manifest and MUST NOT force a model claim. Deterministic rules MAY remain a reference baseline but MUST NOT be called champion unless they passed frozen promotion gates.
 - **Git/GitHub milestone:** `research/phase-7-evaluation` PR; final-test artifacts protected and hashed.
 
 ### Phase 8 — Streaming scoring integration
