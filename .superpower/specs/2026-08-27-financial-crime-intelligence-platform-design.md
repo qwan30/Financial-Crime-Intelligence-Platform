@@ -1,0 +1,1203 @@
+# Financial Crime Intelligence Platform — Design Specification
+
+**Date:** 2026-08-27
+**Status:** Draft / remediated; pending user approval and Phase 0 feasibility
+**Project type:** Research-grade, production-shaped local reference platform
+**Primary domain:** Fiat-banking Anti-Money Laundering (AML)
+**Primary repository:** `financial-crime-intelligence-platform`
+
+---
+
+## 1. Document Authority and Requirement Language
+
+This document is the normative V1 design. Later plans MAY add implementation detail, but MUST NOT weaken its data-isolation, evidence, security, accessibility, governance, or release-truth requirements without an approved specification change.
+
+The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** express requirement levels:
+
+- **MUST / MUST NOT**: mandatory for the named gate.
+- **SHOULD / SHOULD NOT**: expected unless a written exception records rationale, owner, impact, and compensating control.
+- **MAY**: optional and not required for acceptance.
+
+Phase 0 is the implementation gate. Approval of this document authorizes feasibility work only. It does not prove that the data can support every proposed ontology, label, split, typology, model, or product claim.
+
+---
+
+## 2. Product Truth Boundary
+
+The intended product is a research-grade, production-shaped local reference platform for fiat-banking AML detection and investigation. It is designed to exercise production concerns—versioned contracts, streaming correctness, evidence, case operations, security, accessibility, observability, recovery, and model governance—without claiming bank-production readiness or certification.
+
+At this specification stage:
+
+- no production code is claimed;
+- no model has been trained or selected;
+- no holdout has been evaluated;
+- no champion model exists;
+- no latency, throughput, detection, calibration, accessibility, security, release, deployment, or recovery result exists;
+- no public dataset field is assumed to support an ontology node or typology until Phase 0 maps and verifies it;
+- a null champion and an honest negative research result are valid outcomes.
+
+Claims about implementation, performance, model quality, release, or operational readiness MUST cite an immutable artifact manifest and the evidence level defined in Section 24. A local pass MUST NOT be presented as remote CI, release, deployment, or production evidence.
+
+---
+
+## 3. Executive Summary
+
+The platform investigates account-level and suspicious-subgraph risk rather than treating transaction classification as the complete AML problem. Its intended capabilities are:
+
+- deterministic AML rules and progressively gated statistical, anomaly, graph, and temporal research;
+- causal event-time features and bounded online entity state;
+- calibrated risk components with explicit abstention and fail-closed outcomes;
+- suspicious paths, rings, and neighborhoods when supported by source facts;
+- immutable, typed evidence packages and auditable case operations;
+- a read-only, evidence-grounded AI investigator;
+- an accessible analyst workspace linking graph, timeline, evidence, and case state;
+- human-gated model lifecycle management;
+- held-out unknown-typology experiments, ablations, and separate AMLSim stress testing.
+
+The project MUST reuse mature infrastructure and baseline implementations where licensing and fit permit. Custom work SHOULD concentrate on source mapping, causal temporal representation, risk/evidence contracts, streaming correctness, investigation workflow, and reproducible evaluation.
+
+The research definition of done is execution and publication of the approved protocol, including negative findings. It is not a requirement that a graph, temporal, or hybrid model outperform simpler baselines.
+
+---
+
+## 4. Goals and Non-Goals
+
+### 4.1 V1 goals
+
+V1 MUST, subject to Phase 0 feasibility:
+
+1. score eligible accounts or entities from continuously arriving transaction events;
+2. discover and score bounded suspicious paths, rings, groups, or subgraphs;
+3. compare known-typology detection with novelty/anomaly detection;
+4. evaluate at least one intentionally excluded scenario family without contaminating training or model selection;
+5. produce reconstructable evidence for every alert and material case conclusion;
+6. exercise near-real-time Kafka-based scoring under a declared benchmark workload;
+7. support alert triage, assignment, investigation, evidence review, AI assistance, review, disposition, and reopen;
+8. preserve data, code, feature, graph-state, rule, model, calibration, threshold, prompt, provider, and evidence provenance;
+9. execute disjoint temporal evaluation, ablations, separate AMLSim stress tests, and uncertainty reporting;
+10. capture analyst feedback for offline analysis without autonomous retraining or promotion;
+11. demonstrate fail-closed scoring and recoverable state under declared fault drills;
+12. meet WCAG 2.2 AA for the named analyst paths.
+
+### 4.2 Secondary goals
+
+V1 SHOULD:
+
+- make classical, anomaly, graph, and temporal comparisons reproducible;
+- run locally through Docker Compose;
+- expose system, model, and AML-operations telemetry;
+- keep replaceable package boundaries while minimizing initial deployables;
+- provide a truthful portfolio and research narrative tied to evidence.
+
+### 4.3 V1 non-goals
+
+V1 MUST NOT include or claim:
+
+- cryptocurrency or blockchain AML;
+- federated or cross-bank learning;
+- real customer PII;
+- automatic account freezing or payment blocking;
+- autonomous regulatory filing;
+- autonomous case disposition, retraining, threshold change, or model promotion;
+- a bank-grade enterprise IAM implementation;
+- production Kubernetes operations or production certification;
+- a custom graph database or foundation-model training;
+- fabricated entities, relationships, typologies, labels, or evidence;
+- a requirement to implement every candidate anomaly or graph algorithm;
+- a requirement that a complex model become champion.
+
+Kubernetes examples MAY be added after local acceptance, but MUST NOT be a V1 dependency or evidence of deployment.
+
+---
+
+## 5. Terminology and Scoring Objects
+
+- **Event time**: the source timestamp at which a financial event occurred.
+- **Ingest time**: the timestamp at which the platform accepted the event.
+- **Entity risk**: risk for a source-supported entity, initially an `Account` unless Phase 0 validates additional types.
+- **Suspicious subgraph risk**: risk for a bounded, reproducible set of source-supported entities and events connected under a declared extraction rule.
+- **Scenario group**: the indivisible AML scenario or connected label group used to prevent related records crossing evaluation sets.
+- **Development train**: data used to fit model parameters.
+- **Model-selection validation**: data used to choose features, algorithms, hyperparameters, and research branches.
+- **Calibration set**: data used only after a candidate is frozen to fit calibrators, fusion weights, thresholds, and alert-volume policy.
+- **Final temporal test**: the latest untouched evaluation set, accessed once under the approved protocol.
+- **Unknown-typology set**: a separately declared scenario family excluded from supervised development and model selection.
+- **Stress set**: separately generated AMLSim data used for robustness analysis, never silently mixed with AMLBench development data.
+- **Champion**: a candidate approved by the model approver for a named local reference use. `null` is permitted.
+- **Evidence item**: a typed, immutable reference to a reconstructable source fact or reproducible derived fact.
+- **Evidence snapshot**: the immutable evidence-package version reviewed at a case transition or disposition.
+- **Fail closed**: return a typed non-score/degraded outcome; never fabricate or substitute a risk score.
+- **Release evidence**: immutable evidence tied to an exact Git SHA and produced by required remote gates.
+
+---
+
+## 6. Dataset Contract and Phase 0 Feasibility
+
+### 6.1 Verified AMLBench facts and limitations
+
+The candidate primary dataset is the `DVK2026/AMLBench` AusAML release. The planning facts to verify against the downloaded revision are:
+
+- **35,554,888 transactions**;
+- **112,620 accounts**;
+- **seven months**;
+- **297 unique AML scenarios**;
+- **45.1 GB**;
+- synthetic **5% AML-customer prevalence**;
+- **no predefined held-out test because all 297 scenarios are assigned to training**.
+
+These facts describe the published dataset, not a successful local download, schema inventory, usable split, training run, or license decision. Phase 0 MUST pin the exact dataset revision, verify its license/terms, hash local artifacts, and reconcile observed files and counts with the published facts.
+
+The platform MUST NOT call a self-created split the dataset’s official test set. Any project test set is a project-defined, purged temporal test with its own manifest and limitations.
+
+### 6.2 Dataset artifact manifest
+
+Every acquired or generated dataset MUST have a machine-readable manifest containing at least:
+
+- `dataset_id`, `source_uri`, `source_revision`, and retrieval timestamp;
+- license identifier, license text hash, and review decision;
+- file names, byte sizes, SHA-256 hashes, row counts, and schema versions;
+- observed time range, account count, transaction count, and scenario count;
+- source prevalence definitions and measured counts;
+- null, duplicate, invalid-time, invalid-amount, and referential-integrity summaries;
+- source-to-ontology mapping version and source-to-typology mapping version;
+- split-manifest ID or `none`;
+- generator code/config/seed hashes for synthetic data;
+- producer Git SHA and environment lock hash;
+- known limitations and approval record.
+
+An artifact with missing required fields MUST be rejected from gated experiments.
+
+### 6.3 Phase 0 entry checks
+
+Before implementation beyond feasibility utilities, Phase 0 MUST establish:
+
+1. exact dataset revision, terms, hashes, counts, schema, and storage footprint;
+2. at least 20% free workspace headroom after raw, normalized, and one derived copy are budgeted;
+3. measured CPU, memory, disk-throughput, and optional accelerator capacity using a representative sample;
+4. a complete field inventory with types, nullability, cardinality, timestamp semantics, and identifier stability;
+5. source-to-ontology and source-to-typology mappings;
+6. label derivation rules and a leakage denylist;
+7. proof that a purged, scenario-grouped temporal split can be produced with non-empty required sets and no forbidden overlap;
+8. a compute profile for rules, tabular, graph construction, and one bounded graph/temporal smoke run;
+9. an approved data card describing synthetic prevalence and transferability limits.
+
+### 6.4 Feasibility decision
+
+Phase 0 MUST end with one of these signed decisions:
+
+- **GO**: every Phase 0 gate passes; implementation MAY proceed within the verified claim boundary.
+- **REVISE**: the dataset is usable only after the specification narrows ontology, typologies, scale, model ladder, or evaluation claims; the specification MUST be amended and approved before proceeding.
+- **STOP**: license, integrity, storage/compute, label, or split feasibility fails; the project MUST select a different dataset or stop the unsupported claim.
+
+Missing source fields MUST narrow the ontology. Insufficient scenario/time support MUST change the split or research claim. Neither condition permits fabricated data support.
+
+### 6.5 AMLSim separation
+
+IBM AMLSim is a controllable synthetic stress generator, not an extension of the AMLBench training population. AMLSim artifacts MUST have separate manifests, namespaces, preprocessing statistics, and evaluation reports. They MUST NOT be merged into AMLBench development data unless a later approved experiment explicitly studies domain mixing and reports it separately.
+
+---
+
+## 7. Source Mapping, Ontology, Labels, and Leakage
+
+### 7.1 Source-to-ontology mapping
+
+Phase 0 MUST publish a mapping table with one row per ontology type and relationship:
+
+| Ontology object | Required source support | Default decision before verification |
+|---|---|---|
+| `Account` | stable sender/receiver account identifier | Candidate core node |
+| `Transaction` | stable transaction or deterministically derived event identifier, amount, event time | Candidate core event/node |
+| `Account -[TRANSFER]-> Account` | source account, destination account, event time, amount | Candidate core temporal edge |
+| `Customer` / `OWNS` | stable customer identifier and explicit ownership field | Excluded unless verified |
+| `Bank` / `HELD_AT` | explicit bank identifier and relationship | Excluded unless verified |
+| `Branch` / `HAS_BRANCH` | explicit branch and bank identifiers | Excluded unless verified |
+| `Merchant` / `AT_MERCHANT` | explicit merchant identifier and transaction relationship | Excluded unless verified |
+| `Device` / `USES` | explicit device identifier and account/event relationship | Excluded unless verified |
+| `IP`, `Address`, `Phone`, `Country`, `Beneficiary` | explicit stable fields and declared semantics | Excluded unless verified |
+
+The final mapping MUST name source columns, normalization, cardinality, missing-value policy, identifier derivation, and confidence. A source account MUST NOT be relabeled as a customer, merchant, device, or beneficiary merely to create heterogeneity.
+
+### 7.2 Typology mapping
+
+The candidate research taxonomy is:
+
+- **Flow**: fan-in, fan-out, rapid pass-through;
+- **Obfuscation**: layering, circular flow, multi-hop routing;
+- **Structuring**: structuring, smurfing;
+- **Mule activity**: mule collection.
+
+Phase 0 MUST map each source scenario label to exactly one of:
+
+- supported named typology;
+- supported broader family only;
+- suspicious but untyped;
+- unsupported/ambiguous and excluded from typology metrics.
+
+The mapping MUST cite source values and reviewer approval. Name similarity alone is insufficient. Unsupported named typologies MUST be removed from V1 acceptance while remaining possible AMLSim stress hypotheses.
+
+### 7.3 Label derivation
+
+Labels MUST be derived after de-duplication and before feature construction using versioned code and manifests.
+
+- A transaction is positive only when its source label links it to a verified AML scenario under the mapping. It is negative only when the source semantics justify that label. Otherwise it is unknown.
+- An account is positive for a time cutoff when it has participated in a verified positive scenario at or before that cutoff. Its `label_available_at` MUST prevent future participation from labeling earlier features.
+- An account is negative only for a declared observation window with no known positive participation under source semantics. It MUST NOT be described as definitively lawful.
+- A suspicious subgraph is the deterministic, bounded induced set of scenario-linked transactions and participating source-supported entities under a versioned extraction rule. Background context MAY be attached but MUST be marked unlabeled context.
+- Subgraph identity MUST be stable for the same dataset, mapping, cutoff, and extraction version.
+- Multi-label typology targets MAY be used only where the source mapping supports them.
+
+All label artifacts MUST record derivation version, cutoff, source scenario IDs, account IDs, transaction IDs, topology rule, and hash.
+
+### 7.4 Leakage denylist
+
+The following MUST NOT enter model inputs, learned encoders, normalization fits, graph construction for earlier cutoffs, or model-selection heuristics unless an approved experiment explicitly treats them as labels only:
+
+- AML flag, scenario ID, typology label, laundering path ID, alert label, or disposition;
+- fields or identifier prefixes derived from those values;
+- generator configuration, seed, scenario template, or post-generation marker that reveals class;
+- split name, row order imposed by label generation, or file path encoding class;
+- future transactions, future node degree, future neighbor labels, or statistics fit beyond the scoring cutoff;
+- investigation, analyst, case, regulatory, or model outputs created after the event;
+- post-event balances or aggregates whose availability time is not proven;
+- globally normalized values fit using validation, calibration, test, unknown-typology, or stress data;
+- graph edges or embeddings created using future connectivity;
+- duplicate or near-duplicate scenario members crossing sets.
+
+Phase 0 MUST scan raw and derived schemas for direct, proxy, temporal, group, and preprocessing leakage. A denied field MAY remain in an audit-only table isolated from feature access.
+
+---
+
+## 8. Evaluation and Holdout Isolation
+
+### 8.1 Required disjoint sets
+
+The project MUST create these mutually exclusive sets:
+
+1. **development train** — fit parameters and training-time statistics;
+2. **model-selection validation** — select algorithms, features, hyperparameters, and research progression;
+3. **calibration** — fit probability calibration, anomaly mappings, fusion weights, alert thresholds, and abstention policy after candidate freeze;
+4. **final temporal test** — latest untouched project-defined test;
+5. **unknown-typology evaluation** — scenario family excluded from supervised train, selection, and calibration;
+6. **AMLSim stress evaluation** — separately generated robustness data.
+
+No transaction, account leakage group, scenario group, or prohibited near-duplicate MAY cross sets. The split algorithm MUST group the complete scenario-connected component before applying chronological boundaries and MUST purge a documented boundary interval large enough to prevent lookback windows from reading across sets.
+
+### 8.2 Split proof and manifest
+
+The split manifest MUST record:
+
+- dataset and mapping hashes;
+- event-time boundaries and purge durations;
+- scenario grouping and connected-component method;
+- transaction, account, scenario, positive, negative, and unknown counts per set;
+- cross-set intersection counts, all required to equal zero for transactions and scenario groups;
+- account-overlap policy and causal state-reset policy;
+- time-range and lookback checks;
+- unknown-typology exclusion proof;
+- seed where tie-breaking requires one;
+- producing code SHA, reviewer, and approval timestamp.
+
+If a non-empty, representative set cannot be produced without invalid overlap, Phase 0 MUST return REVISE or STOP. Random row splitting MUST NOT be used for headline claims.
+
+### 8.3 Holdout access policy
+
+The final temporal test MUST remain unread by exploratory notebooks and training jobs. Access MUST occur only after:
+
+- algorithms, features, hyperparameters, preprocessing, calibration form, fusion, thresholds, alert budget, and uncertainty method are frozen;
+- the evaluation manifest is signed by the model approver;
+- an immutable candidate artifact and environment lock exist;
+- the run is registered as the single final protocol execution.
+
+Final-test results MUST NOT drive reruns, retuning, model replacement, calibration, fusion, weights, or thresholds. A failed or negative final result remains the result unless an approved new research cycle defines a new untouched test before viewing it.
+
+### 8.4 Calibration and fusion
+
+Supervised outputs MUST be assessed for calibration. Platt scaling and isotonic calibration MAY be compared on model-selection validation; the selected form MUST be fitted only on the calibration set after candidate freeze. Anomaly scores MUST use a calibration-only empirical mapping with explicit out-of-range behavior.
+
+If risk fusion is evaluated, candidate components and fusion forms MUST be chosen on model-selection validation, then fitted on calibration data. Weights MUST be non-negative and sum to one for deterministic weighted fusion. A learned meta-model MAY be compared, but simpler calibrated fusion SHOULD be selected when validation benefit is within the predeclared uncertainty/effect-size margin.
+
+The final test MUST only estimate the already-frozen system.
+
+### 8.5 Metrics and uncertainty
+
+Accuracy MUST NOT be a headline metric. Reports MUST include, where label support permits:
+
+- PR-AUC with 95% scenario-group bootstrap confidence interval;
+- precision at a frozen top-K or alert budget;
+- recall at a frozen precision target;
+- F1 as a secondary metric;
+- Brier score and expected calibration error;
+- per-supported-typology recall and scenario detection rate;
+- suspicious-subgraph recall under the versioned matching rule;
+- unknown-pattern detection and novelty-alert precision;
+- time-to-detection and captured amount only where semantics support them;
+- false positives per 1,000 observed accounts and alerts per simulated day;
+- p50/p95/p99 latency, throughput, lag, and typed failure rate.
+
+Comparisons MUST report paired uncertainty at the scenario-group level and the predeclared practical-effect threshold. Small, uncertain differences MUST be described as inconclusive.
+
+### 8.6 Null champion
+
+Champion selection MUST apply frozen minimum gates for data integrity, calibration, alert volume, scenario coverage, latency, reproducibility, and governance. If every candidate fails any mandatory gate, `champion_model_id` MUST be `null`. The platform MAY run deterministic rules or a clearly labeled research baseline locally, but MUST NOT relabel it as a successful model outcome.
+
+---
+
+## 9. Research Ladder and Stop Conditions
+
+### 9.1 Conditional progression
+
+Research MUST progress through evidence-gated stages rather than implementing every model in advance:
+
+| Stage | Minimum artifact | Gate to next stage |
+|---|---|---|
+| Rules | deterministic typology/risk rules and alert-volume baseline | reproducible labels, causal features, useful error taxonomy |
+| Tabular | logistic regression and one tree-based baseline | measurable validation value beyond rules within compute budget |
+| Anomaly | Isolation Forest or equivalent bounded anomaly baseline | incremental novelty evidence without unacceptable alert volume |
+| Static graph | one GraphSAGE/GAT-class baseline and one bounded graph anomaly candidate | verified graph construction and incremental validation hypothesis |
+| Temporal | one TGN-style baseline | event-time profiling and value beyond static/behavioral baselines |
+| Heterogeneous | HGT-style relation-aware baseline only if multiple verified node/edge types exist | verified heterogeneity and tractable resource use |
+| Hybrid | typed TGN memory plus relation-aware HGT-style attention as a research hypothesis | all simpler gates pass and the hybrid addresses a documented residual error |
+
+Graph anomaly candidates such as PyGOD implementations MAY be reused after license, interface, scale, and memory checks. A candidate list is not an implementation commitment.
+
+### 9.2 Compute profile
+
+Before each graph or temporal stage, a profile manifest MUST record sample size, graph size, temporal span, hardware, software lock, wall time, peak RAM/VRAM, storage, throughput, estimated full-run cost, and failure behavior. Full-scale execution MUST NOT start when projected resource use exceeds declared capacity or leaves less than 20% free storage headroom.
+
+### 9.3 Stop conditions
+
+A stage MUST stop and publish its result when any of these applies:
+
+- required source support or causal construction is absent;
+- the prior stage already meets the predeclared research objective and the next stage lacks a distinct hypothesis;
+- validation improvement is below the practical-effect threshold or uncertainty includes no meaningful gain;
+- alert volume, calibration, reproducibility, or explainability worsens beyond its gate;
+- projected runtime, memory, storage, or local scoring latency exceeds the approved budget;
+- two bounded remediation attempts fail for the same technical constraint;
+- the model cannot be packaged and replayed deterministically.
+
+Stopping is a valid result. The project MUST publish what was attempted, why it stopped, and the remaining claim boundary.
+
+### 9.4 Unknown-typology and adversarial protocols
+
+At least one source-supported scenario family MUST be excluded from supervised development for the unknown-typology protocol. The report MUST distinguish anomaly surfacing from named typology recognition and MUST NOT assign an unsupported known label.
+
+AMLSim SHOULD generate controlled changes in amount, velocity, hop count, ring size, routing topology, and cash-out delay. Each stress axis MUST identify generator configuration, seed, difficulty scale, sample size, and separation from AMLBench. Results MUST report detection and alert-volume degradation against difficulty, including negative findings.
+
+### 9.5 Research definition of done
+
+Research is complete when the approved protocol, including baselines, gated stops, final test, unknown-typology evaluation, AMLSim stress tests, ablations for implemented components, uncertainty analysis, and artifact publication has executed once. A winning hybrid model is not required. The outcome MAY be a simple champion, a partial ladder, an inconclusive comparison, or a null champion.
+
+---
+
+## 10. Feature, Graph, and Risk Contracts
+
+### 10.1 Causal features
+
+Every online and offline feature MUST declare:
+
+- name, semantic description, entity key, data type, unit, and null policy;
+- event-time window and `available_at` semantics;
+- source fields and transformation version;
+- leakage classification;
+- offline implementation and online implementation;
+- parity tolerance and test fixture;
+- owner and deprecation policy.
+
+Candidate families include transaction amount/channel/time encodings; behavioral counts, sums, counterparty novelty, pass-through, and trailing deviation; causal degree, fan-in/out, cycle/path, density, and suspicious-neighbor measures; and device/context features only when verified.
+
+Offline/online parity is mandatory for any production-shaped scoring feature. Feast MAY provide the feature definition abstraction after Phase 0 proves that its push and retrieval semantics fit the event-time contract. Parquet or a verified warehouse is the offline source; Redis is the online projection.
+
+### 10.2 Graph construction
+
+Graph artifacts MUST be heterogeneous only to the extent source mappings support heterogeneity. Every node, edge, attribute, and timestamp MUST trace to a source field or versioned derivation. Graph construction MUST be causal, serializable, bounded, and reproducible from a dataset manifest and cutoff.
+
+Training MAY use PyTorch Geometric or an equivalent maintained framework. Neo4j is an investigation projection and MUST NOT be the scoring hot path or the source of truth for model state.
+
+### 10.3 Risk output
+
+A scoring attempt MUST return one of:
+
+- `SCORED` with frozen component scores, final score, subject, versions, and evidence package;
+- `ABSTAINED` with a versioned reason and available evidence;
+- `FAILED_CLOSED` with a typed failure reason and no synthetic score.
+
+Risk inputs MAY include deterministic rules, supervised probability, behavioral anomaly, graph anomaly, temporal anomaly, and typology confidence. Only components present in the frozen model package MAY contribute. Missing mandatory input MUST produce `FAILED_CLOSED`; optional unavailable input MUST follow the package’s predeclared abstention rule.
+
+### 10.4 Suspicious subgraphs
+
+Subgraph discovery MUST use bounded depth, time range, node count, edge count, and evidence count. Each result MUST record the query/extraction version and truncation state. Unbounded expansion is prohibited. A truncated result MUST be labeled `PARTIAL` and MUST NOT be described as the complete laundering network.
+
+---
+
+## 11. Initial Runtime Architecture
+
+### 11.1 Three deployables
+
+V1 starts with exactly three application deployables:
+
+1. **Ingestion/scoring worker** — replay/consume, schema validation, quarantine, normalization, causal features, bounded entity state, model/rule loading, scoring, evidence creation, and risk-event publication.
+2. **Case/agent API** — alert/case persistence, evidence retrieval, assignments, lifecycle transitions, dispositions, audit, bounded investigation queries, and read-only AI orchestration.
+3. **Investigator web** — typed analyst interface for queues, cases, graph, timeline, evidence, AI output, review, and disposition.
+
+Kafka, PostgreSQL, Redis, object/experiment storage, Neo4j, and monitoring are infrastructure dependencies, not extra application services. Package boundaries for ingestion, features, graph state, scoring, cases, evidence, and agent tools MUST remain explicit inside the deployables.
+
+A package MAY split into a new deployable only after a decision record demonstrates an independent ownership, scaling, isolation, security, or availability need using profiling evidence. Speculative service splitting is prohibited.
+
+### 11.2 State ownership
+
+| State | System of record | Projection/cache |
+|---|---|---|
+| Raw and normalized event log | Kafka plus immutable archived artifacts | none |
+| Dataset and model artifacts | content-addressed object storage / MLflow records | local read cache |
+| Online causal entity state | replayable Kafka history plus versioned checkpoints | Redis and bounded in-process cache |
+| Cases, assignments, transitions, dispositions, outbox | PostgreSQL | API cache if later justified |
+| Evidence snapshots | immutable PostgreSQL/object artifacts with hashes | API read model |
+| Investigation graph | source events/evidence manifests | Neo4j projection |
+| Audit log | append-only PostgreSQL/object export with hash chain | search projection |
+
+Redis or Neo4j loss MUST NOT destroy the only copy of a case, disposition, evidence snapshot, audit record, or model artifact.
+
+### 11.3 Versioned contracts
+
+All external events and APIs MUST use versioned schemas with compatibility tests. Required event families are:
+
+- `RawTransactionEvent`;
+- `NormalizedTransactionEvent`;
+- `EntityStateCommand`;
+- `RiskDecisionEvent`;
+- `EvidencePackage`;
+- `CaseLifecycleEvent`;
+- `AuditEvent`.
+
+Every event MUST include `schema_version`, stable `event_id`, source, event time, ingest time, producer, producer Git SHA, trace ID, and payload hash. Monetary values MUST use decimal amount plus ISO currency, never binary floating point. Unknown required enum values MUST fail validation; additive optional fields MAY be accepted under the compatibility policy.
+
+### 11.4 Primary flow
+
+The required local flow is:
+
+`source replay -> raw Kafka topic -> validation/quarantine -> normalized event -> per-entity state command -> causal feature/state update -> scoring attempt -> evidence package -> risk event -> case/outbox persistence -> investigation projections -> analyst workflow`.
+
+The UI MUST call typed Case/Agent API endpoints only. It MUST NOT query Redis, Neo4j, Kafka, MLflow, or model artifacts directly.
+
+---
+
+## 12. Streaming Correctness and Recovery
+
+### 12.1 Kafka keys and partitions
+
+Topic names MUST include a major contract version. The initial key policy is:
+
+- raw events: verified source partition key, otherwise stable source account ID;
+- normalized transactions: stable `event_id`;
+- entity-state commands: affected `entity_id`, with one command per affected entity;
+- risk decisions: scored `subject_id`;
+- case lifecycle events: `case_id`;
+- quarantine and late-event records: original `event_id`.
+
+All mutations for one entity MUST route to the same entity-state partition. Partition count, key skew, hot keys, replication, retention, and consumer-group ownership MUST be recorded in the benchmark manifest. Cross-entity subgraph state is eventually consistent and MUST expose its completeness watermark.
+
+### 12.2 Event time and late events
+
+Features and graph state MUST use event time. Ingest time is audit metadata only. The initial allowed-lateness default is five minutes and MUST be configurable, versioned, and justified from Phase 0 arrival-delay measurements.
+
+- Events within the allowed-lateness window MUST be buffered/reordered by entity before state application.
+- Events older than the committed entity watermark MUST be written to the late-event stream with reason `REPLAY_REQUIRED` and MUST NOT silently mutate current state.
+- A controlled replay MUST rebuild the affected partition from the last valid checkpoint, publish a new state version, and reconcile dependent risk/case projections without deleting history.
+- Clock, timezone, daylight-saving, and equal-timestamp tie-breaking rules MUST be deterministic; UTC plus `event_id` lexical tie-break is the default.
+
+### 12.3 Idempotency and offset coordination
+
+Stable `event_id` is the idempotency key. Duplicate payload hashes MUST be no-ops; the same ID with a different payload hash MUST be quarantined as a conflict.
+
+For each consumed record, the worker MUST:
+
+1. validate and compute a deterministic state transition;
+2. apply the Redis/checkpoint mutation with event-ID de-duplication;
+3. persist the decision/evidence and an outbox record in one PostgreSQL transaction where persistence is required;
+4. publish downstream events using deterministic IDs;
+5. commit the Kafka offset only after durable state/checkpoint and outbox success.
+
+Retries MUST be safe. Kafka transactional production MAY be used for Kafka-only consume/produce paths. External sinks MUST use unique constraints, optimistic versions, and idempotent upserts. "Exactly once" MUST NOT be claimed across Kafka, Redis, and PostgreSQL; the documented contract is at-least-once delivery with idempotent effects and reconciliation.
+
+### 12.4 Deterministic replay
+
+A replay manifest MUST pin source offsets/artifact hashes, schema/mapping/feature/rule/model/calibration/threshold versions, partition count and key function, event-time policy, checkpoint, environment lock, and Git SHA. Replaying the same manifest MUST produce identical typed decisions and evidence hashes, except explicitly excluded operational timestamps. A divergence MUST fail the replay gate and emit a comparison artifact.
+
+### 12.5 Redis persistence and recovery
+
+Redis MUST use append-only persistence with `appendfsync everysec` plus periodic RDB snapshots for the local reference profile. The declared target is an RPO of at most one second for acknowledged Redis projection updates and an RTO of at most 30 minutes for the documented local benchmark dataset. Kafka history and versioned checkpoints remain the recovery basis.
+
+Backup artifacts MUST be hashed, encrypted at rest where supported, and restore-tested at least once per release candidate. A restore drill MUST rebuild Redis, resume from the recorded offsets, reconcile PostgreSQL/outbox state, and compare state and decision hashes. Targets are requirements until measured; reports MUST publish actual values and PASS/FAIL.
+
+### 12.6 Eventual-consistency states
+
+Case-facing decisions MUST expose one of:
+
+- `PENDING_SCORE`;
+- `SCORED_PERSISTENCE_PENDING`;
+- `CASE_PENDING`;
+- `AVAILABLE`;
+- `DEGRADED_PROJECTION`;
+- `ABSTAINED`;
+- `FAILED_CLOSED`.
+
+The UI MUST show the state, last successful stage, retry status, and data watermark. It MUST NOT show stale projections as complete. Neo4j or AI-provider failure MUST leave the case and evidence accessible with an explicit degraded state.
+
+### 12.7 Failure behavior
+
+- Invalid schemas MUST be quarantined with stable reason codes.
+- Missing mandatory features/state or model-load/inference failure MUST return `FAILED_CLOSED`.
+- A provider outage MUST disable only the AI narrative path.
+- Persistence failure MUST not acknowledge the source offset before recoverable state exists.
+- Poison records MUST move to bounded quarantine after the declared retry count while preserving trace and payload hash.
+- Backpressure MUST pause consumption before unbounded memory growth.
+
+---
+
+## 13. Performance Contract
+
+The research target is p95 incremental scoring latency below 500 ms under a documented local workload. This is not a current result and does not include offline training, full replay, or unconstrained Neo4j traversal.
+
+Every performance claim MUST include a benchmark manifest with:
+
+- exact Git SHA, artifact versions, environment lock, and configuration;
+- CPU, RAM, disk, GPU if used, OS, container runtime, and resource limits;
+- dataset/replay manifest, graph/state size, partition count, key distribution, and cache state;
+- load generator version, message size distribution, target/achieved rate, concurrency, warm-up, duration, and repetitions;
+- p50/p95/p99/end-to-end latency, throughput, Kafka lag, quarantine, retry, abstention, and failure rates;
+- CPU, RAM, disk I/O, network, Redis, PostgreSQL, and Kafka utilization;
+- cold-start, steady-state, and recovery results;
+- raw result artifact hashes and PASS/FAIL against frozen thresholds.
+
+The gate MUST fail if the workload, error rate, sample size, or environment is omitted. A benchmark on a reduced dataset MUST be labeled as such.
+
+---
+
+## 14. Typed Evidence Contract
+
+### 14.1 Evidence package
+
+Every `SCORED` risk decision and every case snapshot MUST reference an immutable `EvidencePackage` containing:
+
+- package ID, schema version, creation time, subject ID/type, event-time cutoff, and content hash;
+- source dataset/event IDs and payload hashes;
+- model, rule, feature, graph-state, calibration, fusion, and threshold versions;
+- component scores, final score, decision status, and reason codes;
+- zero or more typed evidence items;
+- extraction limits, truncation flags, completeness watermark, and failure/degradation state;
+- producer Git SHA and replay-manifest ID.
+
+Each evidence item MUST contain:
+
+- stable `evidence_id` and `evidence_type`;
+- source references and source event times;
+- typed value/unit or bounded entity/edge/path references;
+- derivation name/version and parameters when derived;
+- human-readable summary generated deterministically from typed fields;
+- sensitivity classification and authorization scope;
+- content hash.
+
+Supported initial types are `TRANSACTION_FACT`, `BEHAVIORAL_FEATURE`, `RULE_HIT`, `MODEL_COMPONENT`, `TEMPORAL_PATTERN`, `GRAPH_PATH`, `GRAPH_NEIGHBORHOOD`, `CONTRADICTION`, and `DATA_QUALITY_WARNING`.
+
+### 14.2 Evidence invariants
+
+- Every cited ID MUST exist in the exact package version.
+- Every source fact MUST resolve to an immutable event/artifact hash.
+- Every derived fact MUST name reproducible code and inputs.
+- A model score alone MUST NOT be described as proof of money laundering.
+- Truncated or incomplete evidence MUST carry visible state.
+- Evidence packages and disposition snapshots MUST be append-only; corrections create a superseding version and retain the original.
+- Authorization MUST be enforced when evidence is read, not only when a case is opened.
+
+---
+
+## 15. Case Operations
+
+### 15.1 Lifecycle
+
+The normative case lifecycle is:
+
+`ALERTED -> NEW -> TRIAGED -> INVESTIGATING -> PENDING_REVIEW -> CLOSED`.
+
+Allowed alternate transitions are:
+
+- `NEW` or `TRIAGED` to `CLOSED` for an authorized false-positive/insufficient-evidence disposition;
+- `INVESTIGATING` to `TRIAGED` for reassignment;
+- `PENDING_REVIEW` to `INVESTIGATING` when review requests more work;
+- `CLOSED` to `REOPENED`, followed by `INVESTIGATING`, when new evidence or an approved quality review exists.
+
+Every transition MUST include actor, role, timestamp, previous/new state, reason, `case_version`, evidence snapshot ID, and audit event. Invalid transitions MUST return a typed conflict.
+
+### 15.2 Assignment, SLA, and aging
+
+Cases MUST support queue, priority, one accountable owner, optional collaborators, assigned-at time, due-at time, and escalation state. Default SLA values MUST be configuration, versioned in the release manifest, and visible in the UI. Aging MUST use server time and show time in current state, time to due, and breached status.
+
+Assignment changes MUST be audited. An analyst MUST NOT close a case assigned to another analyst unless the role policy explicitly grants takeover and records the reason.
+
+### 15.3 Deduplication and grouping
+
+Alert deduplication MUST use a versioned key over subject, rule/model package, typology family where supported, and event-time window. Duplicate delivery MUST update neither alert count nor evidence history except through an idempotent receipt record.
+
+Case grouping MAY combine related alerts only through a deterministic, bounded rule. Merge and split MUST:
+
+- retain source case IDs and immutable histories;
+- create new lifecycle events and evidence snapshots;
+- preserve disposition provenance;
+- recalculate assignment/SLA explicitly;
+- never delete the pre-merge or pre-split record.
+
+### 15.4 Optimistic concurrency
+
+Every mutable case command MUST supply the last observed `case_version` through `If-Match` or an equivalent typed field. A stale command MUST return `409 Conflict` with the current version and MUST NOT overwrite another analyst’s work.
+
+### 15.5 Dispositions and feedback
+
+Initial dispositions are `CONFIRMED_SUSPICIOUS`, `FALSE_POSITIVE`, `ESCALATE`, and `INSUFFICIENT_EVIDENCE`. A disposition MUST include case ID/version, analyst ID, timestamp, reason code, optional comment, model/rule versions, and immutable evidence snapshot ID.
+
+Analyst feedback MAY enter future offline datasets only after quality review, provenance capture, leakage analysis, and a new dataset manifest. It MUST NOT trigger direct retraining, threshold changes, or promotion.
+
+---
+
+## 16. Read-Only AI Investigator
+
+### 16.1 Authority boundary
+
+The AI investigator is optional assistance inside the Case/Agent API. It is not an autonomous decision-maker. It MUST NOT freeze accounts, block transactions, file reports, change risk, mutate evidence, assign/merge/split/close cases, change dispositions, retrain or promote models, manage users, or execute arbitrary queries/code.
+
+### 16.2 Least-privilege tools
+
+Approved tools MAY retrieve only bounded, authorized data for:
+
+- case summary and evidence package;
+- entity profile and causal transaction timeline;
+- historical behavior comparison;
+- bounded neighbors, path, and ring queries;
+- model/rule component metadata;
+- prior cases only when role and sensitivity policy permit;
+- contradictions and data-quality warnings.
+
+Each tool MUST have a typed input/output schema, maximum result size, timeout, case/evidence scope, sensitivity label, and authorization check. Authorization MUST run on every call using the human user’s identity. The model MUST never receive database credentials or unrestricted SQL/Cypher access.
+
+The initial run limit is 20 tool calls, 30 seconds wall time, and 100 evidence items. Limits MUST be configurable and recorded with each run. A limit hit MUST return a partial/insufficient result, not silently omit the status.
+
+### 16.3 Grounded output
+
+The agent output MUST be typed into:
+
+- observations with evidence IDs;
+- hypotheses explicitly labeled as hypotheses;
+- supporting evidence IDs;
+- contradictory evidence IDs;
+- confidence category with rationale;
+- unresolved questions;
+- recommended human checks;
+- run/provider/prompt/tool-policy versions and degradation state.
+
+Before display or persistence, deterministic validation MUST parse every cited `evidence_id`, verify membership and authorization in the exact package, reject unsupported citations, and ensure material observations have at least one valid citation. Failed validation MUST suppress the narrative and show `INSUFFICIENT EVIDENCE` plus a grounding-failure audit event.
+
+### 16.4 Prompt-injection controls
+
+All retrieved text and source fields MUST be treated as untrusted data, structurally separated from system/tool instructions, length-limited, and escaped for the target interface. The agent MUST ignore instructions embedded in transactions, evidence, prior narratives, or tool output.
+
+Tool selection and arguments MUST be policy-checked outside the model. High-risk strings, attempted role changes, secret requests, arbitrary query/code requests, cross-case access, data exfiltration, and forbidden actions MUST be refused and audited. Provider output MUST never directly execute a tool or case command.
+
+### 16.5 Provider and retention policy
+
+Before a provider is enabled, the administrator MUST record provider/model/version, hosting region where applicable, transport security, retention duration, training-use setting, subprocessors, incident terms, and approved data classifications. Provider training on submitted data MUST be disabled, and the shortest supported retention MUST be selected. Secrets and direct identifiers MUST be excluded; synthetic/anonymized IDs remain scoped data.
+
+A provider without an approved retention/data-use record MUST remain disabled. Provider failure MUST leave evidence and manual investigation available.
+
+### 16.6 AI adversarial evaluation
+
+The release candidate MUST execute a versioned suite covering prompt injection, indirect injection, forged evidence IDs, cross-case access, excessive tool calls, provider failure, forbidden actions, unsupported conclusions, and malicious prior narratives.
+
+Mandatory gates are:
+
+- 100% refusal of forbidden case/banking/model actions;
+- 0 displayed citations absent from the authorized evidence package;
+- 0 successful cross-case authorization violations;
+- 100% explicit `UNKNOWN` or `INSUFFICIENT EVIDENCE` behavior for evidence-starved cases;
+- all tool-call, timeout, and result-size limits enforced.
+
+Any failure blocks the AI feature from the release; it does not block the manual case workflow.
+
+---
+
+## 17. Analyst Experience and Accessibility
+
+### 17.1 Research truth
+
+Mobbin was considered as a visual-reference source, but searches were blocked by a paid-plan requirement. No Mobbin screen was reviewed and no design claim may imply otherwise. Functional information architecture is derived from this platform’s evidence, case, security, and accessibility requirements plus authoritative public guidance. Future Mobbin refinement MAY occur only after access and source attribution are documented.
+
+### 17.2 Screens and primary workspace
+
+The React and TypeScript investigator web contains:
+
+- Operations Summary;
+- Alert Queue;
+- Case Investigation;
+- Entity Profile;
+- Graph Explorer;
+- Transaction Timeline;
+- Evidence Viewer;
+- AI Investigator;
+- Analyst Disposition;
+- Model/Drift Console for authorized roles.
+
+Case Investigation is the primary workspace. It MUST foreground case status, risk/degradation state, graph, timeline, evidence, AI output, assignment, SLA, audit-relevant actions, and disposition rather than generic dashboard charts.
+
+### 17.3 Synchronized investigation behavior
+
+Graph, timeline, and evidence panels MUST share stable entity, event, and evidence IDs.
+
+- Selecting a graph node/edge MUST filter or highlight corresponding timeline and evidence items.
+- Selecting a timeline event MUST focus the graph context and evidence references.
+- Selecting an evidence citation MUST reveal its source event or a clear reason the source is outside the current bounded view.
+- Filters MUST be visible, reversible, URL/state reproducible, and announced to assistive technology.
+- Truncated, stale, partial, pending, and failed states MUST be visible in every affected panel.
+- AI narrative MUST never replace the typed evidence view.
+
+### 17.4 WCAG 2.2 AA
+
+The Alert Queue, Case Investigation, evidence review, assignment, review, disposition, and reopen paths MUST meet WCAG 2.2 AA. Acceptance requires automated checks plus manual keyboard and screen-reader evidence.
+
+The UI MUST provide:
+
+- complete keyboard operation with logical focus order and no traps;
+- visible focus indicators that meet contrast requirements;
+- semantic headings, landmarks, labels, names, roles, states, and error associations;
+- status communication not dependent on color, position, animation, graph shape, or sound alone;
+- text/table alternatives for graph relationships and chart values with the same decision-relevant information;
+- captions/labels for time ranges, currencies, risk units, and truncation;
+- zoom/reflow support and reduced-motion behavior;
+- accessible conflict, timeout, degraded, validation, and success messages;
+- screen-reader announcements for asynchronous state changes without excessive interruption;
+- target sizes, contrast, and authentication behavior required by WCAG 2.2 AA.
+
+Cytoscape.js MAY render the visual graph, but the accessible table/path alternative is mandatory. A charting dependency MAY be selected only after keyboard, screen-reader, and data-table fallback evaluation.
+
+---
+
+## 18. Identity, Roles, and Segregation of Duties
+
+V1 roles are:
+
+- **Analyst** — view authorized queues/cases/evidence, investigate, comment, and propose dispositions.
+- **Reviewer** — review evidence and approve/return dispositions; MUST NOT approve own high-risk disposition.
+- **Model approver** — freeze evaluation manifests and approve/reject model packages; MUST NOT be the sole author and approver of the same package.
+- **Auditor** — read cases, evidence snapshots, model records, and audit logs; no operational mutation.
+- **Administrator** — manage users, role bindings, provider/config policy, and recovery; no implicit analyst/model approval authority.
+
+Authentication SHOULD use a local OIDC-compatible identity provider. Every API and tool call MUST authorize action, object, sensitivity, and tenant/project scope server-side. UI hiding is not authorization.
+
+Segregation rules MUST require reviewer approval for confirmed-suspicious closure and model-approver approval for champion changes. Emergency administrative access MUST be time-bounded, reasoned, and audited, and MUST NOT bypass immutable evidence or disposition history.
+
+---
+
+## 19. Security, Privacy, and Audit
+
+### 19.1 Data and transport
+
+Only public synthetic or verified anonymized data is allowed. Direct identifiers and secrets MUST NOT enter prompts, logs, fixtures, screenshots, or committed artifacts. Data classes, allowed stores, retention, and deletion behavior MUST be documented.
+
+TLS MUST protect service, browser, Kafka, database, Redis, Neo4j, object-store, and provider connections outside a documented loopback-only development exception. Certificates and exceptions MUST be configuration, not source edits.
+
+Secrets MUST come from environment injection or a secret manager, MUST be absent from Git and images, MUST be masked in logs, and MUST have a rotation runbook.
+
+### 19.2 Audit integrity
+
+Audit events MUST cover authentication, authorization denials, evidence reads, AI tool calls, case transitions, assignments, merges/splits, dispositions, model changes, provider/config changes, exports, backup/restore, and emergency access.
+
+Each audit event MUST include stable ID, actor/role, action, object, timestamp, trace ID, result, reason, previous-event hash, and event hash. Audit records MUST be append-only with periodic signed/hash-root exports to immutable object storage. Verification failure MUST alert and block claims of audit integrity; it MUST NOT delete or rewrite history.
+
+### 19.3 Supply chain and application security
+
+Every release candidate MUST produce an SBOM and run dependency, container-image, secret, and license scans. Unresolved critical vulnerabilities, exposed secrets, prohibited licenses, or unverifiable base images block release. High findings require an approved, expiring exception with compensating control.
+
+APIs MUST validate schemas, sizes, enums, identifiers, pagination, filters, uploads if later introduced, and rate limits. PostgreSQL access MUST use parameterized queries; rendered text MUST be safely encoded; state-changing browser requests MUST have CSRF protection where cookie authentication is used.
+
+### 19.4 Threat models
+
+Before integrated acceptance, threat models MUST cover:
+
+- event poisoning, replay, schema abuse, and partition hot spots;
+- label leakage and training-data poisoning;
+- model/artifact substitution and unsafe deserialization;
+- broken object authorization and cross-case evidence access;
+- prompt injection, tool abuse, provider retention, and data exfiltration;
+- audit tampering and repudiation;
+- denial of service and resource exhaustion;
+- backup theft, restore poisoning, and stale projections;
+- analyst misuse, privilege escalation, and segregation bypass.
+
+Each threat MUST identify assets, trust boundaries, abuse case, control, verification, residual risk, and owner.
+
+### 19.5 Retention, backup, and deletion
+
+The local reference retention schedule MUST be versioned by data class. Cases, evidence, audit, datasets, prompts/outputs, and operational logs MUST have explicit durations; indefinite retention is prohibited without written rationale. Deletion MUST preserve legally/audit-required hashes and tombstones while removing eligible payloads.
+
+PostgreSQL and object artifacts MUST be backed up before each release candidate and restored in a drill. Redis recovery follows Section 12.5. Recovery evidence MUST state actual RPO/RTO, hash comparisons, missing records, and reconciliation outcome.
+
+---
+
+## 20. Model Governance and Drift
+
+MLflow or an equivalent registry MUST track dataset/split manifests, Git SHA, environment, parameters, metrics, uncertainty, artifacts, package hashes, evaluation reports, status, and approvers.
+
+The lifecycle is:
+
+`research trigger -> candidate training -> model-selection validation -> freeze -> calibration -> governance review -> final temporal test -> unknown/stress/ablation reports -> human decision -> local reference promotion or null champion`.
+
+Automatic promotion is prohibited. A champion change MUST reference an immutable package, full gate report, model approver, rollback package, and exact effective time.
+
+Monitoring MUST include:
+
+- data quality and arrival delay;
+- amount, velocity, channel, counterparty, and other verified feature distributions;
+- degree, component, neighborhood, and supported topology statistics;
+- score distribution, calibration when labels mature, alert volume, precision@K, typology/scenario recall, and false-positive rate;
+- label delay and analyst-disposition coverage.
+
+Drift thresholds MUST be fitted without final-test reuse and versioned per model package. A breach MAY trigger research, shadow evaluation, or rollback review; it MUST NOT trigger autonomous retraining, threshold change, or promotion.
+
+---
+
+## 21. Observability and Operational Views
+
+Services MUST emit structured logs with timestamp, severity, service, version, trace ID, event/case ID where authorized, outcome, and stable reason code. Sensitive payloads MUST be excluded.
+
+Prometheus-compatible metrics MUST include:
+
+- `transactions_processed_total`;
+- `scoring_latency_seconds`;
+- `alerts_created_total` and normalized alert rate;
+- `kafka_consumer_lag`;
+- feature lookup and entity-state update latency;
+- quarantine, duplicate, conflict, late, replay, abstention, and failed-closed totals;
+- model score distributions by authorized low-cardinality dimensions;
+- case aging and SLA breaches;
+- AI latency, tool calls, refusals, grounding failures, and provider failures;
+- projection watermark and reconciliation differences;
+- graph node/edge counts for bounded projections.
+
+Grafana or equivalent MUST provide System Health, Model Health, and AML Operations views. Alerts MUST have owner, threshold, duration, severity, runbook, and test evidence. Dashboard presence alone is not operational acceptance.
+
+---
+
+## 22. Verification Strategy
+
+### 22.1 Contract and unit verification
+
+Required checks include schema compatibility, label derivation, leakage scanning, causal windows, deterministic features, graph construction, rules, calibration/fusion, evidence hashing/validation, lifecycle transitions, optimistic concurrency, authorization, agent grounding, audit hash chain, and time/decimal edge cases.
+
+### 22.2 ML verification
+
+Required checks include deterministic preprocessing, split intersections, future-feature denial, scenario grouping, train-only statistics, package load/score compatibility, calibration-set isolation, null-champion behavior, and reproducible smoke runs.
+
+### 22.3 Integration verification
+
+Required flows are:
+
+- raw event to normalized or quarantined outcome;
+- normalized event to ordered entity state and typed score outcome;
+- risk event to idempotent case and immutable evidence;
+- duplicate/conflicting/late event behavior;
+- crash between state, outbox, publication, and offset stages;
+- replay and projection reconciliation;
+- case concurrency, assignment, merge/split, review, disposition, and reopen;
+- authorized agent tools, grounding rejection, injection refusal, and provider degradation.
+
+### 22.4 End-to-end verification
+
+A deterministic synthetic scenario MUST exercise:
+
+`replay -> Kafka -> validation -> causal state/features -> scoring -> evidence -> alert/case -> graph/timeline/evidence UI -> optional grounded AI -> review/disposition -> audit -> restore/replay reconciliation`.
+
+The manual analyst path MUST also succeed with AI disabled.
+
+### 22.5 Accessibility, security, performance, and recovery
+
+The release candidate MUST include:
+
+- automated accessibility results and manual keyboard/screen-reader evidence for named paths;
+- role/authorization and segregation tests;
+- prompt-injection and AI refusal suite if AI is enabled;
+- SBOM and security scan results;
+- performance manifest and raw results;
+- backup/restore and state-replay drill;
+- fault drills for Kafka, Redis, PostgreSQL, Neo4j projection, model load, and AI provider.
+
+Mocks MAY prove unit behavior but MUST NOT be labeled as live integration, recovery, provider, release, or production evidence.
+
+---
+
+## 23. Delivery Roadmap: Phase 0 Through Phase 13
+
+Each phase MUST use a short-lived branch and pull request, stage exact paths, pass required local checks, pass protected-branch remote CI, and merge only after review. The named branch is illustrative; the pull request and exact SHA are normative evidence.
+
+### Phase 0 — Data and research feasibility
+
+- **Purpose:** prove the dataset, label, split, ontology, license, storage, and compute claim boundary.
+- **Deliverables:** dataset manifest; schema/data-quality inventory; mappings; leakage denylist; split proof; compute profile; data card; GO/REVISE/STOP record.
+- **Dependencies:** approved draft specification and access to the exact dataset revision.
+- **Exit gate:** every Section 6 requirement passes; no implementation phase starts on REVISE or STOP.
+- **Git/GitHub milestone:** `research/phase-0-feasibility` PR merged to protected `main` with remote artifact checks.
+
+### Phase 1 — Repository, contracts, and CI foundation
+
+- **Purpose:** establish the smallest reproducible engineering skeleton.
+- **Deliverables:** package boundaries for three deployables; schema registry; environment locks; exact-path validation scripts; CI; secret scanning; artifact-manifest library.
+- **Dependencies:** Phase 0 GO.
+- **Exit gate:** clean bootstrap from clone, contract compatibility checks, no committed secrets, and remote CI pass.
+- **Git/GitHub milestone:** `feat/phase-1-foundation` PR at an immutable merge SHA.
+
+### Phase 2 — Ingestion, validation, and provenance
+
+- **Purpose:** create trustworthy event replay and quarantine.
+- **Deliverables:** raw/normalized contracts; decimal/time handling; stable IDs/hashes; Kafka topics/keys; quarantine; dataset replay manifest.
+- **Dependencies:** Phase 1.
+- **Exit gate:** deterministic valid, invalid, duplicate, conflict, and late-event fixtures pass locally and remotely.
+- **Git/GitHub milestone:** `feat/phase-2-ingestion` PR with integration artifacts.
+
+### Phase 3 — Labels, splits, rules, and tabular baselines
+
+- **Purpose:** establish causal research baselines before graph complexity.
+- **Deliverables:** versioned labels/splits; leakage tests; rules; logistic and one tree baseline; metrics/uncertainty report; null-champion gate.
+- **Dependencies:** Phase 2 and Phase 0 split proof.
+- **Exit gate:** no split/leakage violation, reproducible baselines, frozen next-stage decision.
+- **Git/GitHub milestone:** `research/phase-3-baselines` PR; large results stored as hashed artifacts, not Git blobs.
+
+### Phase 4 — Causal features and bounded entity state
+
+- **Purpose:** prove offline/online parity and recoverable account state.
+- **Deliverables:** feature contracts; offline/online implementations; Redis projection; checkpoints; per-entity commands; replay comparison.
+- **Dependencies:** Phase 3 contracts and Phase 2 stream.
+- **Exit gate:** parity tolerance, event-time ordering, idempotency, crash/replay, RPO/RTO drill, and state-hash checks pass.
+- **Git/GitHub milestone:** `feat/phase-4-feature-state` PR with recovery evidence.
+
+### Phase 5 — Static graph and anomaly research
+
+- **Purpose:** test whether bounded graph/anomaly methods add justified value.
+- **Deliverables:** causal graph builder; one graph anomaly candidate; one static GNN baseline; compute profile; comparison and stop decision.
+- **Dependencies:** Phase 3 baseline and verified Phase 0 graph support.
+- **Exit gate:** reproducible artifacts and explicit PROCEED/STOP decision under Section 9; absence of gain is acceptable.
+- **Git/GitHub milestone:** `research/phase-5-static-graph` PR with artifact hashes.
+
+### Phase 6 — Temporal, heterogeneous, and hybrid research
+
+- **Purpose:** test progressively gated TGN, HGT, and hybrid hypotheses.
+- **Deliverables:** TGN-style baseline; HGT only with verified heterogeneity; typed-TGN/HGT hybrid only if prior gates justify it; profiling and comparisons.
+- **Dependencies:** Phase 5 PROCEED for each relevant branch and Phase 4 causal state.
+- **Exit gate:** package/replay compatibility, resource gates, uncertainty report, and stop decision; no success is presumed.
+- **Git/GitHub milestone:** `research/phase-6-temporal-hybrid` PR.
+
+### Phase 7 — Calibration and final research protocol
+
+- **Purpose:** freeze candidates and execute the approved evaluation exactly once.
+- **Deliverables:** calibration/fusion; frozen thresholds; final temporal test; unknown-typology; AMLSim stress; ablations for implemented parts; model/data cards; champion or null decision.
+- **Dependencies:** completion or valid stop of Phases 3, 5, and 6.
+- **Exit gate:** isolation audit, immutable manifests, uncertainty, negative-result publication, and model-approver decision.
+- **Git/GitHub milestone:** `research/phase-7-evaluation` PR; final-test artifacts protected and hashed.
+
+### Phase 8 — Streaming scoring integration
+
+- **Purpose:** integrate the frozen eligible rule/model package into the ingestion/scoring worker.
+- **Deliverables:** typed outcomes, evidence packages, outbox, offset/state coordination, late-event/replay policy, fail-closed paths, benchmark harness.
+- **Dependencies:** Phase 4 state and Phase 7 package or approved rules-only/null-model package.
+- **Exit gate:** end-to-end event-to-risk integration, fault drills, deterministic replay, and documented performance result.
+- **Git/GitHub milestone:** `feat/phase-8-streaming-scoring` PR with remote integration artifacts.
+
+### Phase 9 — Evidence and case API
+
+- **Purpose:** make alert and case operations durable and auditable.
+- **Deliverables:** typed evidence store; lifecycle; assignment/SLA; deduplication; merge/split; optimistic concurrency; dispositions; audit chain.
+- **Dependencies:** Phase 8 contracts and Phase 1 identity foundation.
+- **Exit gate:** concurrency, authorization, immutable history, idempotency, and restore tests pass.
+- **Git/GitHub milestone:** `feat/phase-9-case-evidence` PR.
+
+### Phase 10 — Read-only AI investigator
+
+- **Purpose:** add optional grounded assistance without expanding case authority.
+- **Deliverables:** approved tools; policy enforcement; typed output; deterministic citation validation; provider record; injection/adversarial suite; manual fallback.
+- **Dependencies:** Phase 9 evidence API and approved provider policy.
+- **Exit gate:** all Section 16.6 mandatory gates pass; otherwise AI remains disabled.
+- **Git/GitHub milestone:** `feat/phase-10-ai-investigator` PR with no secrets/provider payloads committed.
+
+### Phase 11 — Investigator web and accessibility
+
+- **Purpose:** deliver the synchronized analyst workflow.
+- **Deliverables:** queue and case workspace; graph/timeline/evidence synchronization; assignment/review/disposition; degraded states; accessible alternatives.
+- **Dependencies:** Phase 9; Phase 10 is optional and feature-gated.
+- **Exit gate:** named manual analyst flow, WCAG 2.2 AA evidence, concurrency/conflict behavior, and AI-disabled path pass.
+- **Git/GitHub milestone:** `feat/phase-11-investigator-web` PR with accessibility artifacts.
+
+### Phase 12 — Integrated operations, security, performance, and recovery
+
+- **Purpose:** verify the production-shaped local system as one release candidate.
+- **Deliverables:** Docker Compose; telemetry/runbooks; threat models; SBOM/scans; load test; backup/restore; Kafka/Redis/PostgreSQL/Neo4j/provider/model fault drills.
+- **Dependencies:** Phases 8, 9, and 11; Phase 10 only when enabled.
+- **Exit gate:** all mandatory local and remote gates pass at one exact SHA; failed mandatory drills block release.
+- **Git/GitHub milestone:** `release/phase-12-candidate` PR and immutable release-candidate tag after merge.
+
+### Phase 13 — Release evidence and truthful publication
+
+- **Purpose:** publish the reproducible local reference release and research record.
+- **Deliverables:** architecture, data/model cards, baseline/ablation/unknown/stress reports, latency and recovery reports, operational runbook, limitations, attribution, release manifest.
+- **Dependencies:** Phase 12 pass and Phase 7 completed protocol.
+- **Exit gate:** every claim maps to exact-SHA evidence; negative/null results retained; remote CI and release artifacts verified.
+- **Git/GitHub milestone:** protected `main` release commit, signed/versioned release artifact where available, and immutable release notes.
+
+---
+
+## 24. Git, CI, Evidence, and Release Truth
+
+### 24.1 GitHub Flow
+
+- `main` MUST be protected against direct pushes and force pushes.
+- Every change MUST use a short-lived branch, reviewed pull request, required remote status checks, and exact-SHA evidence.
+- Staging MUST name exact intended paths. Blanket adds and unrelated cleanup are prohibited.
+- Generated data, model, benchmark, and scan artifacts MUST use approved artifact storage with hashes; secrets and large raw datasets MUST NOT enter Git.
+- Commits SHOULD be small, phase-scoped, and use `<type>: <description>` subjects.
+- A pull request MUST state scope, out-of-scope items, validation commands/results, artifact links/hashes, risks, rollback, and review approvals.
+
+### 24.2 Evidence levels
+
+- **UNIT**: isolated logic/contract evidence.
+- **INTEGRATION**: real local dependencies and cross-component flow.
+- **LIVE**: real external provider or runtime named in the protocol.
+- **RELEASE**: required remote CI and immutable artifacts at the exact release SHA.
+- **PRODUCTION**: real production environment evidence; outside V1.
+
+An installed dependency, mock, local pass, container startup, merged PR, or artifact presence MUST NOT be promoted to a higher level. Missing Docker, Kafka, database, provider, remote CI, or credentials MUST produce BLOCKED/NOT RUN for the affected gate, not a downgraded PASS.
+
+### 24.3 Release boundary
+
+A local reference release requires:
+
+- Phase 0 GO and completed Phase 7 protocol;
+- one exact candidate SHA through required remote CI;
+- Phase 12 integration, security, accessibility, performance, and recovery evidence;
+- all enabled AI gates;
+- immutable manifests, SBOM, scan results, release notes, limitations, and rollback instructions;
+- no unresolved mandatory gate failure.
+
+Release does not mean deployment or production certification. V1 MUST NOT claim bank readiness, regulatory approval, live customer use, or production SLO compliance.
+
+---
+
+## 25. Acceptance Criteria
+
+### 25.1 Data and research
+
+- Phase 0 ends in GO before implementation proceeds.
+- Dataset facts, artifacts, mappings, labels, leakage denylist, and split proof are reproducible.
+- Development train, model-selection validation, calibration, final temporal test, unknown-typology, and AMLSim stress sets follow Section 8.
+- The research ladder obeys its gates and stop conditions.
+- The final protocol executes once and publishes uncertainty, limitations, and a champion or `null`.
+
+### 25.2 System
+
+- The three-deployable architecture completes the deterministic event-to-audit flow.
+- Invalid, duplicate, conflicting, late, missing-state, model-failure, persistence-failure, and provider-failure paths produce the specified typed outcomes.
+- Replay, backup/restore, idempotency, optimistic concurrency, and eventual-consistency behavior pass their drills.
+- Performance results use the manifest in Section 13; an unmet target is reported as FAIL, not hidden.
+
+### 25.3 Product and evidence
+
+- Alerts and cases reference immutable, reconstructable typed evidence.
+- Case assignment, SLA/aging, deduplication, merge/split, review, disposition, and reopen are authorized and audited.
+- Graph, timeline, and evidence remain synchronized and disclose partial/stale state.
+- The manual analyst flow works when AI is unavailable or disabled.
+- Named analyst paths meet WCAG 2.2 AA with automated and manual evidence.
+
+### 25.4 AI, security, and governance
+
+- AI tools are read-only, bounded, per-call authorized, injection-tested, and deterministically grounded.
+- Roles and segregation of duties are enforced server-side.
+- Audit integrity, TLS, secrets, retention, SBOM, scans, threat models, and recovery satisfy Sections 18–22.
+- Model changes remain human-gated and reversible; drift never auto-promotes.
+
+### 25.5 Truthful completion
+
+The project is complete when the protocol and enabled product gates are executed and published at the required evidence level. Completion MUST NOT depend on a favorable hybrid result. Any unsupported claim, hidden gate failure, reused final test, fabricated entity/evidence, or mock labeled as live/release evidence invalidates acceptance.
+
+---
+
+## 26. Repository and Artifact Shape
+
+The initial repository SHOULD preserve these package/artifact boundaries without turning each into a deployable:
+
+```text
+apps/
+  investigator-web/
+
+services/
+  ingestion-scoring-worker/
+  case-agent-api/
+
+packages/
+  schemas/
+  datasets/
+  labels/
+  features/
+  graph/
+  scoring/
+  evidence/
+  cases/
+  agent-tools/
+
+research/
+  baselines/
+  anomaly/
+  graph/
+  temporal/
+  evaluation/
+  stress/
+
+infra/
+  docker/
+  monitoring/
+
+docs/
+  architecture/
+  data-card/
+  model-card/
+  evaluation/
+  runbooks/
+```
+
+Names MAY change during per-phase planning if boundaries and three initial deployables remain intact.
+
+---
+
+## 27. Reuse, Attribution, and Future Scope
+
+Candidate reuse includes AMLBench/AusAML, IBM AMLSim, PyTorch Geometric, maintained graph/anomaly baselines, Feast, MLflow, Kafka, Redis, PostgreSQL, Neo4j, Prometheus/Grafana, Cytoscape.js, and a state-machine agent library. Each adopted dependency MUST record license, version, source, security status, and whether use is imported, adapted, project-specific, or a research contribution.
+
+Post-V1 possibilities include active learning, cross-bank privacy-preserving research, richer scenario generation, multi-agent assistance, regulatory-draft assistance with mandatory human review, Kubernetes deployment, and licensed visual-reference refinement. They MUST NOT be used to expand V1 acceptance implicitly.
+
+---
+
+## 28. Primary References
+
+- [AMLBench dataset card](https://huggingface.co/datasets/DVK2026/AMLBench)
+- [IBM AMLSim repository](https://github.com/IBM/AMLSim/)
+- [Redis persistence documentation](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+- [Feast push data source reference](https://docs.feast.dev/reference/data-sources/push)
+- [Apache Kafka introduction](https://kafka.apache.org/42/getting-started/introduction/)
+- [Temporal Graph Networks paper](https://arxiv.org/abs/2006.10637)
+- [Heterogeneous Graph Transformer paper](https://arxiv.org/abs/2003.01332)
+- [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)
+- [NIST AI RMF core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+- [OWASP prompt-injection risk](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+
+---
+
+## 29. Approved Future Product Statement Template
+
+Before evidence exists, describe the work as:
+
+> Designing a research-grade, production-shaped fiat-banking AML reference platform with causal temporal evaluation, evidence-grounded investigation, and human-gated model governance.
+
+After a release, past-tense claims MUST be generated from the exact release manifest and MUST state limitations, evidence level, dataset nature, model outcome including a null champion, and measured rather than intended performance.
