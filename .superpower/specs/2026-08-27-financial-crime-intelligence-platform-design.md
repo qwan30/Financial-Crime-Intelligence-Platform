@@ -451,6 +451,7 @@ A package MAY split into a new deployable only after a decision record demonstra
 | Raw and normalized event log | Kafka plus immutable archived artifacts | none |
 | Dataset and model artifacts | content-addressed object storage / MLflow records | local read cache |
 | Online causal entity state | replayable Kafka history plus versioned checkpoints | Redis and bounded in-process cache |
+| Per-event processing continuation | PostgreSQL durable `EventTransitionResult` plus outbox/receipts | Redis applied-transition marker and Kafka consumer offset |
 | Cases, assignments, transitions, dispositions, outbox | PostgreSQL | API cache if later justified |
 | Evidence snapshots | immutable PostgreSQL/object artifacts with hashes | API read model |
 | Investigation graph | source events/evidence manifests | Neo4j projection |
@@ -508,17 +509,30 @@ Features and graph state MUST use event time. Ingest time is audit metadata only
 
 ### 12.3 Idempotency and offset coordination
 
-Stable `event_id` is the idempotency key. Duplicate payload hashes MUST be no-ops; the same ID with a different payload hash MUST be quarantined as a conflict.
+Stable `event_id` is the source idempotency key. Each entity mutation MUST also have a deterministic `transition_id` derived from `event_id`, `entity_id`, and transition-contract version. Duplicate payload hashes MUST be no-ops; the same ID with a different payload hash MUST be quarantined as a conflict.
+
+Before advancing Redis, the worker MUST commit an atomically durable per-event transition/result record, `EventTransitionResult`, in PostgreSQL. The record MUST be unique by `transition_id` and contain the input/payload hash, source topic/partition/offset, prior and next state versions/hashes, deterministic state transition, typed decision or failure result, evidence/package hashes, required sink intents, outbox messages with deterministic IDs, completion receipts, and processing status. Its input, transition, and result payloads MUST be immutable after creation; processing status and receipts MAY advance monotonically through compare-and-set updates or append-only child records. PostgreSQL is the processing-continuation source of truth; Redis is a rebuildable projection and a Kafka offset is only a consumption cursor.
 
 For each consumed record, the worker MUST:
 
 1. validate and compute a deterministic state transition;
-2. apply the Redis/checkpoint mutation with event-ID de-duplication;
-3. persist the decision/evidence and an outbox record in one PostgreSQL transaction where persistence is required;
-4. publish downstream events using deterministic IDs;
-5. commit the Kafka offset only after durable state/checkpoint and outbox success.
+2. in one PostgreSQL transaction, create or verify the durable `EventTransitionResult`, persist its decision/evidence metadata and artifact intents, and persist every required sink intent/outbox message;
+3. after that transaction commits, apply the state transition to Redis using compare-and-set on the prior state version/hash and record `transition_id` as the applied marker;
+4. persist state-application progress, deliver required locally owned sinks/outbox messages idempotently, and persist their receipts against the same record;
+5. mark the record `COMPLETE` only after the Redis state version/hash is verified, decision/evidence are durable, and every required sink/outbox receipt exists;
+6. commit the Kafka offset only after the record is `COMPLETE`.
 
-Retries MUST be safe. Kafka transactional production MAY be used for Kafka-only consume/produce paths. External sinks MUST use unique constraints, optimistic versions, and idempotent upserts. "Exactly once" MUST NOT be claimed across Kafka, Redis, and PostgreSQL; the documented contract is at-least-once delivery with idempotent effects and reconciliation.
+A retry MUST first load `EventTransitionResult`. If Redis already shows the same applied `transition_id` and next-state hash, the retry MUST NOT apply state again; it MUST resume any unfinished decision/evidence artifact materialization, required sink delivery, outbox publication, receipt recording, and completion work from the durable record before committing the Kafka offset. A different Redis version/hash MUST fail closed and trigger reconciliation or replay. An event MUST NOT be marked fully processed solely because Redis state advanced.
+
+Crash recovery MUST follow these boundaries:
+
+- before the PostgreSQL transaction commits: Redis remains unchanged and retry recomputes the record;
+- after the PostgreSQL commit but before Redis application: retry loads the record and applies its stored transition;
+- after Redis application but before progress is recorded: retry verifies the applied marker/version/hash, records progress, and resumes remaining work;
+- after sink/outbox delivery but before its receipt is recorded: deterministic message IDs and sink unique constraints make redelivery safe, and retry records or reconciles the receipt;
+- after `COMPLETE` but before offset commit: retry verifies the complete record and commits the offset without repeating effects.
+
+Kafka transactional production MAY be used for Kafka-only consume/produce paths. External sinks MUST use unique constraints, optimistic versions, deterministic message IDs, and idempotent upserts. "Exactly once" MUST NOT be claimed across Kafka, Redis, and PostgreSQL; the documented contract is at-least-once delivery with a PostgreSQL continuation ledger, idempotent effects, receipts, and reconciliation.
 
 ### 12.4 Deterministic replay
 
@@ -728,7 +742,7 @@ Any failure blocks the AI feature from the release; it does not block the manual
 
 ### 17.1 Research truth
 
-Mobbin was considered as a visual-reference source, but searches were blocked by a paid-plan requirement. No Mobbin screen was reviewed and no design claim may imply otherwise. Functional information architecture is derived from this platform’s evidence, case, security, and accessibility requirements plus authoritative public guidance. Future Mobbin refinement MAY occur only after access and source attribution are documented.
+Mobbin was considered as a visual-reference source, but searches were blocked by a paid-plan requirement. No Mobbin screen was reviewed; design claims MUST NOT imply otherwise. Functional information architecture is derived from this platform’s evidence, case, security, and accessibility requirements plus authoritative public guidance. Future Mobbin refinement MAY occur only after access and source attribution are documented.
 
 ### 17.2 Screens and primary workspace
 
@@ -947,9 +961,9 @@ Each phase MUST use a short-lived branch and pull request, stage exact paths, pa
 ### Phase 1 — Repository, contracts, and CI foundation
 
 - **Purpose:** establish the smallest reproducible engineering skeleton.
-- **Deliverables:** package boundaries for three deployables; schema registry; environment locks; exact-path validation scripts; CI; secret scanning; artifact-manifest library.
+- **Deliverables:** package boundaries for three deployables; schema registry; environment locks; exact-path validation scripts; CI; secret scanning; artifact-manifest library; local OIDC-compatible identity-provider bootstrap; analyst, reviewer, model approver, auditor, and administrator role bindings; deny-by-default server-side authorization contract and verification fixtures.
 - **Dependencies:** Phase 0 GO.
-- **Exit gate:** clean bootstrap from clone, contract compatibility checks, no committed secrets, and remote CI pass.
+- **Exit gate:** clean bootstrap from clone; contract compatibility checks; authenticated identity bootstrap; role/action/object/sensitivity authorization allow-and-deny fixtures; no committed secrets; and remote CI pass.
 - **Git/GitHub milestone:** `feat/phase-1-foundation` PR at an immutable merge SHA.
 
 ### Phase 2 — Ingestion, validation, and provenance
@@ -1012,7 +1026,7 @@ Each phase MUST use a short-lived branch and pull request, stage exact paths, pa
 
 - **Purpose:** make alert and case operations durable and auditable.
 - **Deliverables:** typed evidence store; lifecycle; assignment/SLA; deduplication; merge/split; optimistic concurrency; dispositions; audit chain.
-- **Dependencies:** Phase 8 contracts and Phase 1 identity foundation.
+- **Dependencies:** Phase 8 contracts plus the Phase 1 identity-provider bootstrap, role-binding artifact, and server-side authorization contract.
 - **Exit gate:** concurrency, authorization, immutable history, idempotency, and restore tests pass.
 - **Git/GitHub milestone:** `feat/phase-9-case-evidence` PR.
 
