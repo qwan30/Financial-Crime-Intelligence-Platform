@@ -52,11 +52,11 @@ The platform investigates account-level and suspicious-subgraph risk rather than
 - a read-only, evidence-grounded AI investigator;
 - an accessible analyst workspace linking graph, timeline, evidence, and case state;
 - human-gated model lifecycle management;
-- held-out unknown-typology experiments, ablations, and separate AMLSim stress testing.
+- held-out unknown-typology experiments, ablations, and separate AMLSim stress testing when an accepted learned candidate exists; otherwise explicitly sealed dependency-skips.
 
 The project MUST reuse mature infrastructure and baseline implementations where licensing and fit permit. Custom work SHOULD concentrate on source mapping, causal temporal representation, risk/evidence contracts, streaming correctness, investigation workflow, and reproducible evaluation.
 
-The research definition of done is execution and publication of the approved protocol, including negative findings. It is not a requirement that a graph, temporal, or hybrid model outperform simpler baselines.
+The research definition of done is execution and publication of the approved protocol, including negative findings and its sealed-null path. It is not a requirement that a graph, temporal, or hybrid model outperform simpler baselines.
 
 ---
 
@@ -69,12 +69,12 @@ V1 MUST, subject to Phase 0 feasibility:
 1. score eligible accounts or entities from continuously arriving transaction events;
 2. discover and score bounded suspicious paths, rings, groups, or subgraphs;
 3. compare known-typology detection with novelty/anomaly detection;
-4. evaluate at least one intentionally excluded scenario family without contaminating training or model selection;
+4. when an accepted learned candidate exists, evaluate at least one intentionally excluded scenario family without contaminating training or model selection; otherwise record the dependency skip defined in Section 8.6;
 5. produce reconstructable evidence for every alert and material case conclusion;
 6. exercise near-real-time Kafka-based scoring under a declared benchmark workload;
 7. support alert triage, assignment, investigation, evidence review, AI assistance, review, disposition, and reopen;
 8. preserve data, code, feature, graph-state, rule, model, calibration, threshold, prompt, provider, and evidence provenance;
-9. execute disjoint temporal evaluation, ablations, separate AMLSim stress tests, and uncertainty reporting;
+9. execute disjoint temporal evaluation, ablations, separate AMLSim stress tests, and uncertainty reporting on the candidate path; on the sealed-null path, retain split/integrity, deterministic-rule/reference-baseline, system/evidence/AI/UI, and operational-benchmark diagnostics while recording learned-candidate-dependent evaluations as skipped;
 10. capture analyst feedback for offline analysis without autonomous retraining or promotion;
 11. demonstrate fail-closed scoring and recoverable state under declared fault drills;
 12. meet WCAG 2.2 AA for the named analyst paths.
@@ -348,7 +348,9 @@ Comparisons MUST report paired uncertainty at the scenario-group level and the p
 
 ### 8.6 Null champion
 
-Champion selection MUST apply frozen minimum gates for data integrity, calibration, alert volume, scenario coverage, latency, reproducibility, and governance. If every candidate fails any mandatory gate, the Phase 7 completion manifest MUST record `selected_model = null`, `champion = null`, and the stopped/skipped branch evidence. The platform MAY run deterministic rules or a clearly labeled research baseline locally, but MUST NOT relabel it as a champion unless it passed the frozen promotion gates.
+Champion selection MUST apply frozen minimum gates for data integrity, calibration, alert volume, scenario coverage, latency, reproducibility, and governance. If no candidate passes those frozen gates, the only truthful completion is a sealed-null manifest: `selected_model = null`, `champion = null`, and final temporal test status `NOT_RUN_SEALED`. The final temporal test MUST remain sealed and MUST NOT execute on this path.
+
+A sealed-null manifest is acceptable for research/project completion only when every planned development and validation branch emitted its signed, content-hashed decision record and required negative-result report. Unknown-typology evaluation, AMLSim stress evaluation, and any model ablation requiring an accepted learned candidate MUST be recorded as `SKIPPED_BY_DEPENDENCY`; dataset/split integrity checks, deterministic rules/reference-baseline diagnostics, system/evidence/AI/UI tests, and operational benchmarks MUST still run where applicable. The candidate path permits exactly one preregistered final-temporal-test execution and its applicable unknown-typology, AMLSim-stress, and ablation evaluations. The platform MAY run deterministic rules or a clearly labeled research baseline locally, but MUST NOT relabel it as a champion unless it passed the frozen promotion gates.
 
 ---
 
@@ -397,13 +399,13 @@ Stopping is a valid result. The project MUST publish what was attempted, why it 
 
 ### 9.4 Unknown-typology and adversarial protocols
 
-At least one source-supported scenario family MUST be excluded from supervised development for the unknown-typology protocol. The report MUST distinguish anomaly surfacing from named typology recognition and MUST NOT assign an unsupported known label.
+On the candidate path, at least one source-supported scenario family MUST be excluded from supervised development for the unknown-typology protocol. The report MUST distinguish anomaly surfacing from named typology recognition and MUST NOT assign an unsupported known label. On the sealed-null path, this protocol is `SKIPPED_BY_DEPENDENCY` under Section 8.6.
 
-AMLSim SHOULD generate controlled changes in amount, velocity, hop count, ring size, routing topology, and cash-out delay. Each stress axis MUST identify generator configuration, seed, difficulty scale, sample size, and separation from AMLBench. Results MUST report detection and alert-volume degradation against difficulty, including negative findings.
+On the candidate path, AMLSim SHOULD generate controlled changes in amount, velocity, hop count, ring size, routing topology, and cash-out delay. Each executed stress axis MUST identify generator configuration, seed, difficulty scale, sample size, and separation from AMLBench; results MUST report detection and alert-volume degradation against difficulty, including negative findings. On the sealed-null path, this protocol is `SKIPPED_BY_DEPENDENCY` under Section 8.6.
 
 ### 9.5 Research definition of done
 
-Research is complete when the approved protocol, including baselines, gated stops, final test, unknown-typology evaluation, AMLSim stress tests, ablations for implemented components, uncertainty analysis, and artifact publication has executed once. A winning hybrid model is not required. The outcome MAY be a simple champion, a partial ladder, an inconclusive comparison, or a null champion.
+Research is complete when the approved protocol has published every planned branch decision and negative-result report, applicable uncertainty analysis, and artifacts. The candidate path executes baselines, gated stops, one final test, unknown-typology evaluation, AMLSim stress tests, and ablations for implemented components; the sealed-null path records `NOT_RUN_SEALED` and the required `SKIPPED_BY_DEPENDENCY` evaluations in Section 8.6 while completing all applicable non-candidate diagnostics. A winning hybrid model is not required. The outcome MAY be a simple champion, a partial ladder, an inconclusive comparison, or a sealed null champion.
 
 ---
 
@@ -528,7 +530,7 @@ Features and graph state MUST use event time. Ingest time is audit metadata only
 
 ### 12.3 Idempotency and offset coordination
 
-Stable `event_id` is the source delivery idempotency key. Each stateful execution MUST also declare a deterministic `state_generation_id` for the entity-state lineage and a deterministic `replay_run_id` for the replay or correction run. The default live path uses the current approved state generation and `replay_run_id = live`. A normal delivery retry of the same event in the same generation MUST keep the same `transition_id`, `risk_decision_id`, and `evidence_package_id`. A controlled late-event replay or correction MUST create a new `state_generation_id` or `replay_run_id`, and every affected entity mutation MUST get a new deterministic `transition_id` derived from the original `event_id`, `entity_id`, `state_generation_id`, `replay_run_id`, feature/rule/model versions that affect state, and transition-contract version. Duplicate payload hashes within the same lineage MUST be no-ops; the same lineage ID with a different payload hash MUST be quarantined as a conflict.
+Stable `event_id` is the source delivery idempotency key. Each stateful execution MUST also declare a deterministic `state_generation_id` for the entity-state lineage and a deterministic `replay_run_id` for the replay or correction run. Both IDs MUST be derived from the frozen replay-manifest hash (including its source range and artifacts), never from wall-clock time or randomness; every state key and checkpoint MUST be generation-namespaced by those IDs. The default live path uses the current approved state generation and `replay_run_id = live`. A normal delivery retry of the same event in the same generation MUST keep the same `transition_id`, `risk_decision_id`, and `evidence_package_id`. A controlled late-event replay or correction MUST create a new `state_generation_id` and `replay_run_id`, and every affected entity mutation MUST get a new deterministic `transition_id` derived from the original `event_id`, `entity_id`, `state_generation_id`, `replay_run_id`, feature/rule/model versions that affect state, and transition-contract version. Duplicate payload hashes within the same lineage MUST be no-ops; the same lineage ID with a different payload hash MUST be quarantined as a conflict.
 
 A correction execution MUST create new immutable `RiskDecision` and `EvidencePackage` artifacts, including a new `risk_decision_id` and `evidence_package_id`, derived from the original event ID, `state_generation_id`, `replay_run_id`, scored subject, feature/rule/model/calibration/fusion/threshold versions, and contract versions. It MUST NOT mutate prior transition, decision, evidence, case, or audit artifacts. The new artifacts MUST carry `supersedes_decision_id` and `supersedes_evidence_package_id` when they replace a prior artifact, or a typed retraction link when the corrected execution withdraws the prior score without a replacement. They MUST also include correction reason, correction source event, approver when manual approval is required, and prior artifact hashes.
 
@@ -557,7 +559,11 @@ Kafka transactional production MAY be used for Kafka-only consume/produce paths.
 
 ### 12.4 Deterministic replay
 
-A replay manifest MUST pin `state_generation_id`, `replay_run_id`, source offsets/artifact hashes, schema/mapping/feature/rule/model/calibration/threshold versions, partition count and key function, event-time policy, checkpoint, environment lock, and Git SHA. Replay equivalence means exact equality of the canonical `RiskDecision` and `EvidencePackage` SHA-256 hashes defined in Section 14.3 for the same lineage. Deterministic event time, evidence cutoff time, state generation, replay run, and supersession/retraction links are hashed; operational processing/creation timestamps, delivery receipts, retries, and sink status are excluded from those content hashes and compared only as audit metadata. A divergence in either canonical hash MUST fail the replay gate and emit a comparison artifact.
+A replay manifest MUST pin `state_generation_id`, `replay_run_id`, source offsets/artifact hashes, schema/mapping/feature/rule/model/calibration/threshold versions, partition count and key function, event-time policy, checkpoint, environment lock, and Git SHA. `state_generation_id` and `replay_run_id` MUST be deterministic derivations of that frozen manifest/hash. Replay equivalence means exact equality of the canonical `RiskDecision` and `EvidencePackage` SHA-256 hashes defined in Section 14.3 for the same lineage. Deterministic event time, evidence cutoff time, state generation, replay run, and supersession/retraction links are hashed; operational processing/creation timestamps, delivery receipts, retries, and sink status are excluded from those content hashes and compared only as audit metadata. A divergence in either canonical hash MUST fail the replay gate and emit a comparison artifact.
+
+Controlled replay/correction MUST consume through a dedicated replay consumer group and cursor and MUST NOT commit replay offsets to the live consumer group. It MUST rebuild into an inactive generation while live ingestion continues on the active generation. The frozen manifest MUST identify a source-start checkpoint and catch-up watermark; before activation, the replay generation MUST reach and verify that watermark and reconcile every affected decision, evidence, and case correction.
+
+Activation requires a verified state hash/checkpoint, no unresolved conflict or quarantine, monotonic source coverage at least that of the active generation, and complete sink/case reconciliation. PostgreSQL/control metadata MUST atomically compare-and-set the active-generation pointer from the expected prior generation to the replay generation. The cutover MUST fail if that expected prior pointer changed and MUST never regress source coverage or state version. After a successful cutover, new live events MUST route to the new active generation; the old generation and its audit/rollback metadata MUST be retained for the declared retention window. Rollback MUST be a separately audited pointer compare-and-set, never an in-place mutation.
 
 ### 12.5 Redis persistence and recovery
 
@@ -666,24 +672,37 @@ Operational processing/creation/ingest timestamps, database sequence values, ret
 
 ### 15.1 Lifecycle and command matrix
 
-V1 case states are `NEW`, `TRIAGED`, `INVESTIGATING`, `PENDING_REVIEW`, `CLOSED_CONFIRMED_SUSPICIOUS`, `CLOSED_FALSE_POSITIVE`, `CLOSED_INSUFFICIENT_EVIDENCE`, `ESCALATED`, and `REOPENED`. `ALERTED` is a risk/alert occurrence, not a case state. V1 accepts only these lifecycle commands:
+V1 case states are `NEW`, `TRIAGED`, `INVESTIGATING`, `PENDING_REVIEW`, `CLOSED_CONFIRMED_SUSPICIOUS`, `CLOSED_FALSE_POSITIVE`, `CLOSED_INSUFFICIENT_EVIDENCE`, `ESCALATED`, `REOPENED`, plus immutable provenance tombstones `MERGED` and `SPLIT`. `ALERTED` is a risk/alert occurrence, not a case state. V1 accepts only these lifecycle commands:
 
 | Command | Valid source state | Authorized actor | Result and mandatory data |
 |---|---|---|---|
 | `CREATE_CASE` | no case | case-ingestion system principal | `NEW`; originating `risk_decision_id` and evidence version |
-| `ATTACH_RISK_OCCURRENCE` | any case state | case-ingestion system principal | state unchanged unless correction materiality rules below require `PENDING_REVIEW` or `REOPENED`; occurrence `risk_decision_id`, `evidence_package_id`, lineage IDs, prior case/evidence version, correlation key, and supersession/retraction links when present |
+| `ATTACH_RISK_OCCURRENCE` | any non-tombstone case state | case-ingestion system principal | state unchanged unless correction materiality rules below require `INVESTIGATING` or `REOPENED`; occurrence `risk_decision_id`, `evidence_package_id`, lineage IDs, prior case/evidence version, correlation key, and supersession/retraction links when present |
 | `ASSIGN_CASE` / `REASSIGN_CASE` | `NEW`, `TRIAGED`, `INVESTIGATING`, `REOPENED` | Analyst with queue-assignment permission | state unchanged; assignee, reason, SLA recalculation |
 | `TRIAGE_CASE` | `NEW` | assigned Analyst | `TRIAGED`; priority and triage reason |
 | `START_INVESTIGATION` | `TRIAGED`, `REOPENED` | assigned Analyst | `INVESTIGATING`; investigation-start timestamp |
 | `ADD_NOTE_OR_EVIDENCE` | `INVESTIGATING` | assigned Analyst | state unchanged; append-only note/evidence version |
-| `MERGE_CASES` | two or more cases in `NEW`, `TRIAGED`, `INVESTIGATING`, `REOPENED`, `PENDING_REVIEW`, closed states, or `ESCALATED` | Analyst with case-merge permission for active cases; Reviewer required if any source is `PENDING_REVIEW`, closed, or `ESCALATED` | one survivor case in the authorized target state; all source case IDs, case versions, evidence versions/snapshots, merge reason, target owner/SLA, and provenance links |
-| `SPLIT_CASE` | `TRIAGED`, `INVESTIGATING`, `REOPENED`, `PENDING_REVIEW`, closed states, or `ESCALATED` | Analyst with case-split permission for active cases; Reviewer required for `PENDING_REVIEW`, closed, or `ESCALATED` cases | source case plus one or more resulting cases with authorized states; moved occurrence IDs, case/evidence versions, split reason, new owners/SLA, and provenance links |
+| `MERGE_CASES` | only source-state combinations allowed by the deterministic matrix below | Analyst with case-merge permission; Reviewer additionally required for the permitted `PENDING_REVIEW` exception | new resulting case in the matrix result state; all source cases become `MERGED` tombstones |
+| `SPLIT_CASE` | only source-state combinations allowed by the deterministic matrix below | Analyst with case-split permission | new child cases in `INVESTIGATING`; source becomes a `SPLIT` tombstone |
 | `SUBMIT_PROPOSED_DISPOSITION` | `INVESTIGATING` | assigned Analyst | `PENDING_REVIEW`; one proposed disposition, reason, and immutable evidence snapshot |
-| `APPROVE_PROPOSED_DISPOSITION` | `PENDING_REVIEW` | Reviewer who did not submit the proposal | `CONFIRMED_SUSPICIOUS` -> `CLOSED_CONFIRMED_SUSPICIOUS`; `FALSE_POSITIVE` -> `CLOSED_FALSE_POSITIVE`; `INSUFFICIENT_EVIDENCE` -> `CLOSED_INSUFFICIENT_EVIDENCE`; `ESCALATE` -> `ESCALATED` |
+| `APPROVE_PROPOSED_DISPOSITION` | `PENDING_REVIEW` with an active, non-`SUPERSEDED` proposal | Reviewer who did not submit the proposal | `CONFIRMED_SUSPICIOUS` -> `CLOSED_CONFIRMED_SUSPICIOUS`; `FALSE_POSITIVE` -> `CLOSED_FALSE_POSITIVE`; `INSUFFICIENT_EVIDENCE` -> `CLOSED_INSUFFICIENT_EVIDENCE`; `ESCALATE` -> `ESCALATED` |
 | `REJECT_PROPOSED_DISPOSITION` | `PENDING_REVIEW` | Reviewer who did not submit the proposal | `INVESTIGATING`; rejection reason and required follow-up |
 | `REOPEN_CASE` | any three closed states or `ESCALATED` | Reviewer | `REOPENED`; new-evidence or quality-review reason and new evidence snapshot |
 
 There is no direct `NEW`/`TRIAGED` to closed transition, and an Analyst MUST NOT approve a disposition. Every command MUST pass server-side role, object, assignment, sensitivity, and state authorization; supply the last observed `case_version` and the command-specific evidence version or snapshot; append an atomic audit event; and record actor, role, command, timestamp, previous/new state, reason, prior and resulting case versions, prior and resulting evidence versions, and lineage IDs where present. `CREATE_CASE` stores the originating evidence version; `ATTACH_RISK_OCCURRENCE` records the occurrence and evidence version it attaches; assignment, triage, and start commands record the evidence version observed for the action; note/evidence commands create a successor evidence version; merge/split commands record every source and resulting case/evidence version; disposition proposal and reviewer commands reference the immutable proposal snapshot; and reopen references the new evidence snapshot or approved quality-review snapshot. Invalid state/version or stale evidence version MUST return `409 Conflict`; denied authority MUST return `403 Forbidden`; neither outcome may mutate the case. `REOPENED` MUST pass through `START_INVESTIGATION` before another disposition proposal.
+
+The deterministic merge/split source-state/result-state matrix is:
+
+| Operation | Source-state set | Directly allowed | Result |
+|---|---|---|---|
+| `MERGE_CASES` | every source is `NEW`, `TRIAGED`, `INVESTIGATING`, or `REOPENED`, with compatible nonterminal evidence state | Yes | new case `INVESTIGATING`; every source becomes `MERGED` |
+| `MERGE_CASES` | every source is `PENDING_REVIEW`, all reference the same still-valid proposal and immutable evidence snapshot, and reviewer policy permits it | Yes, Reviewer authorized | new case `PENDING_REVIEW` using that unchanged proposal/snapshot; every source becomes `MERGED` |
+| `MERGE_CASES` | any terminal/`ESCALATED` source, mixed terminal/nonterminal sources, or incompatible approved disposition | No | Reviewer-authorized `REOPEN_CASE` is required for every affected source before merge. Merge MUST NOT create, copy, approve, or replace a terminal disposition. |
+| `MERGE_CASES` | `PENDING_REVIEW` sources with different, expired, or `SUPERSEDED` proposals | No | Reviewer must reject the proposals to return sources to `INVESTIGATING` before merge; no disposition is copied or replaced. |
+| `SPLIT_CASE` | `NEW`, `TRIAGED`, `INVESTIGATING`, or `REOPENED` | Yes | every child is `INVESTIGATING`; source becomes `SPLIT` |
+| `SPLIT_CASE` | `PENDING_REVIEW`, any terminal state, or `ESCALATED` | No | Reject the proposal or reviewer-authorize `REOPEN_CASE` as applicable, then `START_INVESTIGATION` before split. Split MUST NOT create, copy, approve, or replace a terminal disposition. |
+
+`MERGE_CASES` and `SPLIT_CASE` MUST authorize the actor against every source case, require optimistic-concurrency versions and evidence snapshots for every source, and perform all source/result updates, provenance records, and audit records atomically or not at all. Resulting cases MUST link every source case ID, immutable history, occurrence ID, evidence version/snapshot, and audit hash; source cases are never deleted and their `MERGED`/`SPLIT` tombstones are immutable provenance states. The audit payload MUST contain the command, actor/role and authorization decisions, all source/result IDs and versions, source/result states, occurrence and evidence IDs/hashes, proposal status/snapshot when present, reason, assignment/SLA decision, concurrency preconditions, and transaction/audit hash.
 
 ### 15.2 Assignment, SLA, and aging
 
@@ -697,7 +716,9 @@ Alert transport idempotency MUST use unique `risk_decision_id`. Redelivery of th
 
 Every distinct `risk_decision_id` MUST be retained as a separate occurrence. If correlation attaches or suppresses it into an existing alert/case rather than creating another queue item, the system MUST increment the occurrence count and append a new evidence version and immutable occurrence/history record. It MUST NOT silently discard a distinct risk decision.
 
-Correction occurrences MUST be reconciled through `ATTACH_RISK_OCCURRENCE` using the new lineage IDs. The command MUST mark the superseded or retracted decision/evidence as non-current without deletion, attach the correction occurrence, recompute case priority and the current evidence view, preserve analyst notes, assignments, dispositions, and review history, and emit an audit event naming the correction reason and prior/current artifact IDs. If a material correction invalidates a proposed disposition, the case MUST return to `PENDING_REVIEW` with the corrected evidence snapshot. If a material correction invalidates an approved terminal disposition or escalation, the case MUST move to `REOPENED` under reviewer authority or an approved automated quality-control policy. Retries are idempotent on the new `risk_decision_id`, `evidence_package_id`, `state_generation_id`, and `replay_run_id`.
+Correction occurrences MUST be reconciled through `ATTACH_RISK_OCCURRENCE` using the new lineage IDs. The command MUST mark the superseded or retracted decision/evidence as non-current without deletion, attach the correction occurrence, recompute case priority and the current evidence view, preserve analyst notes, assignments, dispositions, and review history, and emit an audit event naming the correction reason and prior/current artifact IDs. If a material correction invalidates a proposed disposition, that proposal MUST become `SUPERSEDED`, non-approvable, and linked to the correction evidence; the case MUST return to `INVESTIGATING`, and a new proposal is required before `PENDING_REVIEW`. If it invalidates an approved terminal disposition or escalation, the case MAY move to `REOPENED` only through Reviewer approval or a specifically approved automatic quality-control policy, then MUST pass through `START_INVESTIGATION`. Retries are idempotent on the new `risk_decision_id`, `evidence_package_id`, `state_generation_id`, and `replay_run_id`.
+
+Correction materiality and any automatic quality-control policy that can trigger a state change MUST be versioned, deterministic, content-hashed, model-approver/reviewer approved as appropriate, effective-dated, tested, and included in the evidence and audit records. No free-text or model-only materiality decision may trigger a state change.
 
 Case grouping MAY combine related alerts only through a deterministic, bounded rule. Merge and split MUST:
 
@@ -714,7 +735,7 @@ Every mutable case command MUST supply the last observed `case_version` through 
 
 ### 15.5 Dispositions and feedback
 
-The only V1 proposed dispositions are `CONFIRMED_SUSPICIOUS`, `FALSE_POSITIVE`, `ESCALATE`, and `INSUFFICIENT_EVIDENCE`. A proposal MUST include case ID/version, Analyst ID, timestamp, reason code, optional comment, model/rule versions, and immutable evidence snapshot ID. It has no terminal effect until a Reviewer executes `APPROVE_PROPOSED_DISPOSITION` under the matrix above.
+The only V1 proposed dispositions are `CONFIRMED_SUSPICIOUS`, `FALSE_POSITIVE`, `ESCALATE`, and `INSUFFICIENT_EVIDENCE`. A proposal MUST include case ID/version, Analyst ID, timestamp, reason code, optional comment, model/rule versions, and immutable evidence snapshot ID. It has no terminal effect until a Reviewer executes `APPROVE_PROPOSED_DISPOSITION` under the matrix above. Proposal status is `ACTIVE`, `REJECTED`, `APPROVED`, or `SUPERSEDED`; a `SUPERSEDED` proposal can never be approved.
 
 Analyst feedback MAY enter future offline datasets only after quality review, provenance capture, leakage analysis, and a new dataset manifest. It MUST NOT trigger direct retraining, threshold changes, or promotion.
 
@@ -916,7 +937,7 @@ MLflow or an equivalent registry MUST track dataset/split manifests, Git SHA, en
 
 The lifecycle is:
 
-`research trigger -> candidate training -> model-selection validation -> freeze -> calibration -> governance review -> final temporal test -> unknown/stress/ablation reports -> human decision -> local reference promotion or null champion`.
+`research trigger -> candidate training -> model-selection validation -> freeze -> calibration -> governance review -> candidate final temporal test plus applicable unknown/stress/ablation reports, or sealed-null manifest with dependency skips -> human decision -> local reference promotion or null champion`.
 
 Automatic promotion is prohibited. A champion change MUST reference an immutable package, full gate report, model approver, rollback package, and exact effective time.
 
@@ -1065,10 +1086,10 @@ Each phase MUST use a short-lived branch and pull request, stage exact paths, pa
 
 ### Phase 7 — Calibration and final research protocol
 
-- **Purpose:** freeze candidates and execute the approved evaluation exactly once.
-- **Deliverables:** `CALIBRATION_FUSION` completion manifest with one of two paths. Candidate path calibrates/fuses the accepted candidate and freezes thresholds before one permitted final temporal test execution. Null path records `selected_model = null`, `champion = null`, why every branch stopped or was skipped, whether the final temporal test remains sealed, model/data cards with limitations, and negative-result publication. The final temporal test MUST remain sealed by default on the null path unless a pre-registered null-result protocol explicitly requires one execution.
+- **Purpose:** freeze eligible candidates and complete the approved candidate or sealed-null protocol exactly once.
+- **Deliverables:** `CALIBRATION_FUSION` completion manifest with one of two paths. Candidate path calibrates/fuses the accepted candidate and freezes thresholds before exactly one preregistered final temporal test execution plus applicable unknown/stress/ablation reports. Sealed-null path records `selected_model = null`, `champion = null`, final temporal test status `NOT_RUN_SEALED`, why every branch stopped or was skipped, every required negative-result report, model/data cards with limitations, and the required `SKIPPED_BY_DEPENDENCY` records. The final temporal test MUST remain sealed on the sealed-null path.
 - **Dependencies:** signed/hashed decision records for `RULE_TABULAR`, `BEHAVIOR_ANOMALY`, `GRAPH_ANOMALY`, `STATIC_GNN`, `TGN`, `HGT`, and `HYBRID_TGN_HGT`, each with `PROCEED`, `STOP`, or `SKIPPED_BY_DEPENDENCY`.
-- **Exit gate:** isolation audit, immutable manifests, uncertainty, negative-result publication, and model-approver decision. The release/research-completion gates MUST accept an honest null Phase 7 completion manifest and MUST NOT force a model claim. Deterministic rules MAY remain a reference baseline but MUST NOT be called champion unless they passed frozen promotion gates.
+- **Exit gate:** isolation audit, immutable manifests, applicable uncertainty, negative-result publication, and model-approver decision. The release/research-completion gates MUST accept a sealed-null Phase 7 manifest only when every planned development/validation branch has its decision record and negative-result report; they MUST NOT force a model claim or final-test execution. Deterministic rules MAY remain a reference baseline but MUST NOT be called champion unless they passed frozen promotion gates.
 - **Git/GitHub milestone:** `research/phase-7-evaluation` PR; final-test artifacts protected and hashed.
 
 ### Phase 8 — Streaming scoring integration
@@ -1114,7 +1135,7 @@ Each phase MUST use a short-lived branch and pull request, stage exact paths, pa
 ### Phase 13 — Release evidence and truthful publication
 
 - **Purpose:** publish the reproducible local reference release and research record.
-- **Deliverables:** publish the already-generated architecture, data/model cards, baseline/ablation/unknown/stress reports, latency/recovery reports, operational runbook, limitations, attribution, and release manifest as immutable release artifacts tied to `candidate_sha`; Phase 13 MUST NOT create or modify a repository file for publication.
+- **Deliverables:** publish the already-generated architecture, data/model cards, baseline reports, applicable candidate-path ablation/unknown/stress reports or sealed-null `SKIPPED_BY_DEPENDENCY` records, latency/recovery reports, operational runbook, limitations, attribution, and release manifest as immutable release artifacts tied to `candidate_sha`; Phase 13 MUST NOT create or modify a repository file for publication.
 - **Dependencies:** Phase 12 pass for the exact candidate SHA and Phase 7 completed protocol.
 - **Exit gate:** every claim and artifact maps to the unchanged candidate SHA; negative/null results are retained; remote CI and release artifacts are verified. If any repository file changes, the change creates a new candidate SHA and all applicable Phase 12/release gates MUST rerun before tagging.
 - **Git/GitHub milestone:** tag the exact Phase 12 candidate SHA and publish signed/versioned artifacts and immutable release notes without a new source commit. `v1.0.0` additionally requires the Phase 10 AI gates.
@@ -1163,9 +1184,9 @@ Release does not mean deployment or production certification. V1 MUST NOT claim 
 
 - Phase 0 ends in GO before implementation proceeds.
 - Dataset facts, artifacts, mappings, labels, leakage denylist, and split proof are reproducible.
-- Development train, model-selection validation, calibration, final temporal test, unknown-typology, and AMLSim stress sets follow Section 8.
+- Development train, model-selection validation, calibration, final temporal test, unknown-typology, and AMLSim stress sets follow Section 8; the latter four execute only as the candidate path requires, while the sealed-null path preserves final-test isolation and records `NOT_RUN_SEALED`/`SKIPPED_BY_DEPENDENCY`.
 - The research ladder obeys its gates and stop conditions.
-- The final protocol executes once and publishes uncertainty, limitations, and a champion or `null`.
+- The final protocol executes once and publishes applicable uncertainty, limitations, and either a champion or the sealed-null manifest with `selected_model = null`, `champion = null`, and `NOT_RUN_SEALED`.
 
 ### 25.2 System
 
@@ -1191,7 +1212,7 @@ Release does not mean deployment or production certification. V1 MUST NOT claim 
 
 ### 25.5 Truthful completion
 
-The project is complete when the protocol, manual workflow gates, and for `v1.0.0` the Phase 10 agent gates are executed and published at the required evidence level. Completion MUST NOT depend on a favorable hybrid result. Any unsupported claim, hidden gate failure, reused final test, fabricated entity/evidence, or mock labeled as live/release evidence invalidates acceptance.
+The project is complete when the candidate or sealed-null protocol, manual workflow gates, and for `v1.0.0` the Phase 10 agent gates are executed and published at the required evidence level. Completion MUST NOT depend on a favorable hybrid result. A sealed-null completion requires every planned development/validation decision record and negative-result report, preserves the untouched final test, and records learned-candidate-dependent evaluation as `SKIPPED_BY_DEPENDENCY`. Any unsupported claim, hidden gate failure, reused or unsealed final test, fabricated entity/evidence, or mock labeled as live/release evidence invalidates acceptance.
 
 ---
 
