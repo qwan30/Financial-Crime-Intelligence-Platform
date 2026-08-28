@@ -72,7 +72,7 @@ V1 MUST, subject to Phase 0 feasibility:
 2. discover and score bounded suspicious paths, rings, groups, or subgraphs;
 3. compare known-typology detection with novelty/anomaly detection;
 4. when a promotable candidate or a reproducible frozen research baseline exists, evaluate at least one intentionally excluded scenario family without contaminating training or model selection; otherwise record only the specific dependency skip allowed by Section 8.6;
-5. produce reconstructable evidence for every alert and material case conclusion;
+5. produce evidence that is reconstructable for every alert and material case conclusion while its required source payloads remain retained/pinned, and expose the typed reduced guarantee after lawful source-payload retirement;
 6. exercise near-real-time Kafka-based scoring under a declared benchmark workload;
 7. support alert triage, assignment, investigation, evidence review, AI assistance, review, disposition, and reopen;
 8. preserve data, code, feature, graph-state, rule, model, calibration, threshold, prompt, provider, and evidence provenance;
@@ -126,8 +126,8 @@ Kubernetes examples MAY be added after local acceptance, but MUST NOT be a V1 de
 - **Unknown-typology set**: a separately declared scenario family excluded from supervised development and model selection.
 - **Stress set**: separately generated AMLSim data used for robustness analysis, never silently mixed with AMLBench development data.
 - **Champion**: a candidate approved by the model approver for a named local reference use. `null` is permitted.
-- **Evidence item**: a typed, immutable reference to a reconstructable source fact or reproducible derived fact.
-- **Evidence snapshot**: the immutable evidence-package version reviewed at a case transition or disposition.
+- **Evidence item**: a typed, immutable reference to a source fact that is reconstructable while its required payload remains retained/pinned, or to a reproducible derived fact; lawful source retirement carries the Section 19.5 reduced guarantee.
+- **Evidence snapshot**: the immutable `CaseEvidenceSnapshot` reviewed at a case transition or disposition; it references one or more underlying `EvidencePackage` artifacts and is not an EvidencePackage version.
 - **Fail closed**: return a typed non-score/degraded outcome; never fabricate or substitute a risk score.
 - **Release evidence**: immutable evidence tied to an exact Git SHA and produced by required remote gates.
 
@@ -451,7 +451,7 @@ Training MAY use PyTorch Geometric or an equivalent maintained framework. Neo4j 
 
 ### 10.3 Risk output
 
-A scoring component MUST be declared in the frozen package as either **partition-local**, depending only on state whose entity partition covers the decision cutoff, or **cross-entity**, depending on counterpart, neighborhood, graph, or other multi-partition state. A committed entity watermark is the greatest event-time cutoff and source offset for which that entity partition's ordered `EventTransitionResult` records are `COMPLETE` in one `state_generation_id`; a component completeness watermark is the minimum verified coverage across all inputs it requires in that generation. The PostgreSQL `EventTransitionResult` continuation ledger MUST store, for every attempted decision, those watermarks as source partition/offset, event-time cutoff, `state_generation_id`, component/input ID, and coverage status. A cross-entity component MUST wait until every mandatory counterpart and graph input covers the event cutoff in the same state generation; cross-generation inputs are prohibited. Missing mandatory coverage is `FAILED_CLOSED`; optional-component absence may be `ABSTAINED` only under the frozen abstention policy.
+A scoring component MUST be declared in the frozen package as either **partition-local**, depending only on state whose entity partition covers the decision cutoff, or **cross-entity**, depending on counterpart, neighborhood, graph, or other multi-partition state. A committed entity watermark is the greatest contiguous event-time cutoff and source offset for which that entity partition has durable `STATE_APPLIED` receipts in one `state_generation_id`; a component completeness watermark is the minimum such verified coverage across all inputs it requires in that generation. Neither watermark depends on downstream scoring, evidence, sinks, or `COMPLETE`. The PostgreSQL `EventTransitionResult` continuation ledger MUST store those watermarks as source partition/offset, event-time cutoff, `state_generation_id`, component/input ID, group/member receipt IDs, and coverage status. A cross-entity component MUST wait until every mandatory counterpart and graph input has the required same-generation/cutoff `STATE_APPLIED` coverage; cross-generation inputs are prohibited. Missing mandatory coverage blocks and retries rather than creating a wall-clock-dependent score. Only a deterministically proven terminal missing input may yield `FAILED_CLOSED`; optional-component absence may be `ABSTAINED` only under the frozen abstention policy.
 
 Every actual scoring attempt MUST create durable canonical `RiskDecision` and `EvidencePackage` records and return one of:
 
@@ -552,7 +552,7 @@ Features and graph state MUST use event time. Ingest time is audit metadata only
 - A controlled replay MUST rebuild the affected partition from the last valid checkpoint, publish a new state version, and reconcile dependent risk/case projections without deleting history.
 - Clock, timezone, daylight-saving, and equal-timestamp tie-breaking rules MUST be deterministic; UTC plus `event_id` lexical tie-break is the default.
 
-The named `REPLAY_REQUIRED` operational alert MUST evaluate replay-required record count, oldest record age, and number/list of affected partitions against versioned thresholds. Its runbook MUST default to controlled partition replay; per-entity replay is not the default recovery contract.
+The named `REPLAY_REQUIRED` operational alert MUST evaluate replay-required record count, oldest record age, and number/list of affected partitions against versioned thresholds. Its runbook MUST default to controlled partition replay for the **rebuild scope**; per-entity replay is not the default rebuild contract. A partial rebuild does not narrow the Section 12.4 global activation fence/materialization scope.
 
 ### 12.3 Idempotency and offset coordination
 
@@ -560,26 +560,32 @@ Stable `event_id` is the source delivery idempotency key. Every controlled repla
 
 A correction execution MUST create new immutable `RiskDecision` and `EvidencePackage` artifacts, including a new `risk_decision_id` and `evidence_package_id`, derived from the original event ID, `state_generation_id`, `replay_run_id`, scored subject, feature/rule/model/calibration/fusion/threshold versions, and contract versions. It MUST NOT mutate prior transition, decision, evidence, case, or audit artifacts. The new artifacts MUST carry `supersedes_decision_id` and `supersedes_evidence_package_id` when they replace a prior artifact, or a typed retraction link when the corrected execution withdraws the prior score without a replacement. They MUST also include correction reason, correction source event, approver when manual approval is required, and prior artifact hashes.
 
-Before advancing Redis, the worker MUST commit an atomically durable per-event transition/result record, `EventTransitionResult`, in PostgreSQL. The record MUST be unique by `transition_id` and contain the `state_generation_id`, `replay_run_id`, input/payload hash, source topic/partition/offset, prior and next state versions/hashes, deterministic state transition, the complete canonical `RiskDecision` and `EvidencePackage` payloads, supersession/retraction links when present, required sink intents, outbox messages with deterministic IDs, completion receipts, and processing status. The durable complete payload MUST be stored either inline in that PostgreSQL transaction or in a verified content-addressed blob uploaded and read-back-verified before the transaction, with its immutable URI, media/schema version, byte length, and SHA-256 atomically recorded in the row. Metadata, hash, or artifact intent without the retrievable complete payload is insufficient and MUST block Redis advancement. Its input, transition, and result payloads MUST be immutable after creation; processing status and receipts MAY advance monotonically through compare-and-set updates or append-only child records. PostgreSQL is the processing-continuation source of truth; Redis is a rebuildable projection and a Kafka offset is only a consumption cursor.
+Before advancing Redis, the worker MUST deterministically enumerate the normalized source event's complete expected entity-command group. `transition_group_id` MUST derive from the normalized event ID, payload hash, `state_generation_id`, `replay_run_id`, and entity-command contract version. A PostgreSQL group receipt MUST store the canonical sorted expected member IDs, expected count, source topic/partition/offset, event cutoff, generation/run lineage, and group hash before any member transition begins. Every member MUST validate before that transaction: a malformed or unsupported member makes the whole group a pre-transition terminal-quarantine outcome, creates no `EventTransitionResult`, and advances the source offset only under the Section 12.7 persisted quarantine receipt.
+
+For a valid group, the worker MUST atomically create or verify one durable `EventTransitionResult` per expected member in PostgreSQL. Each record MUST be unique by `transition_id` and contain the group receipt ID/hash; `state_generation_id`; `replay_run_id`; input/payload hash; source topic/partition/offset; prior and next state versions/hashes; complete deterministic state-transition bytes or a read-back-verified content-addressed blob; and monotonic processing stage. After every expected member's state mutation is durably applied and its Redis version/hash plus applied marker are verified, the worker MUST atomically advance the group receipt to durable `STATE_APPLIED`, recording every member transition ID/state hash/receipt and the resulting contiguous state-coverage watermark. Transition bytes and receipts are immutable; processing stage MAY advance only by compare-and-set or append-only child records. PostgreSQL is the processing-continuation and watermark source of truth; Redis is a rebuildable projection and a Kafka offset is only a consumption cursor.
+
+Scoring MUST begin only after the source group is `STATE_APPLIED` and every required partition-local or cross-entity group/member receipt satisfies the same-generation/cutoff contract in Section 10.3. It MUST then append an immutable decision/evidence result containing the complete canonical `RiskDecision` and `EvidencePackage` payloads or their verified content-addressed blob references, supersession/retraction links when present, required sink intents, outbox messages with deterministic IDs, and completion receipts. Metadata, hash, or artifact intent without the retrievable complete transition or decision/evidence payload is insufficient. `COMPLETE` remains downstream of scoring/evidence/sinks and MUST NOT be a scoring or state-watermark prerequisite.
 
 Ordinary transition delivery rules apply directly only to the active generation. An inactive replay generation MUST store each `RiskDecision`, `EvidencePackage`, case-correction output, and generation-scoped outbox entry as immutable `STAGED_NON_CURRENT` artifacts keyed by its candidate `state_generation_id` and `replay_run_id`. They MUST NOT be visible as current, affect alert priority, disposition, or current evidence, or be consumed by ordinary live correction consumers before activation. Its sinks write only the staged artifacts; they do not mutate a case-facing current view.
 
 For each consumed record, the worker MUST:
 
-1. validate and compute a deterministic state transition;
-2. in one PostgreSQL transaction, create or verify the durable `EventTransitionResult` for the exact `state_generation_id` and `replay_run_id`, persist the complete canonical decision/evidence payload or its verified content-addressed blob reference, and persist every required sink intent/outbox message;
-3. after that transaction commits, apply the state transition to Redis using compare-and-set on the prior state version/hash and record `transition_id` as the applied marker;
-4. persist state-application progress, deliver required locally owned sinks/outbox messages idempotently, and persist their receipts against the same record;
-5. mark the record `COMPLETE` only after the Redis state version/hash is verified, decision/evidence are durable, and every required sink/outbox receipt exists;
-6. commit the Kafka offset only after the record is `COMPLETE`.
+1. validate the normalized event and every deterministically enumerated expected group member before durable transition work; quarantine the whole invalid group or persist the valid group receipt and each member's deterministic transition;
+2. apply every member transition to Redis using compare-and-set on its prior state version/hash and persist its applied marker/receipt;
+3. after the complete expected member set is verified, atomically advance the group to `STATE_APPLIED` and advance only contiguous entity/component state-coverage watermarks;
+4. wait for all required same-generation/cutoff `STATE_APPLIED` receipts, then create the immutable canonical decision/evidence result and required sink intents/outbox messages;
+5. deliver required locally owned sinks/outbox messages idempotently, persist their receipts, and mark the group/member continuation records `COMPLETE` only after state hashes are verified, decision/evidence are durable, and every required receipt exists;
+6. commit the source Kafka offset only after every expected member is `COMPLETE`.
 
-A retry MUST first load `EventTransitionResult` by `transition_id`, `state_generation_id`, and `replay_run_id` and verify/read its complete canonical payload. If Redis already shows the same applied lineage marker and next-state hash, the retry MUST NOT apply state again; it MUST reconstruct any missing decision/evidence artifact or sink message from that durable payload, then resume required sink delivery, outbox publication, receipt recording, and completion work before committing the Kafka offset. A missing or hash-invalid payload and a different Redis version/hash MUST fail closed and trigger reconciliation or replay. An event MUST NOT be marked fully processed solely because Redis state advanced.
+A retry MUST first load the group receipt and every expected `EventTransitionResult` by group/member ID, `state_generation_id`, and `replay_run_id`, verify the stored expected set/count and immutable payloads, and resume from durable stages. If Redis already shows a member's applied lineage marker and next-state hash, retry MUST NOT apply it again; missing member or `STATE_APPLIED` receipts block offset advancement and are recovered by deterministic retry/reconciliation. After `STATE_APPLIED`, retry MUST reconstruct any missing decision/evidence artifact or sink message from immutable lineage inputs, then resume delivery, receipt recording, and completion. A missing/hash-invalid payload or different Redis version/hash MUST fail closed and trigger reconciliation or replay. Wall-clock timeout or partial group arrival MUST NOT become a canonical `ABSTAINED`/`FAILED_CLOSED` result, and an event MUST NOT be marked fully processed solely because Redis state advanced.
 
 Crash recovery MUST follow these boundaries:
 
-- before the PostgreSQL transaction commits: Redis remains unchanged and retry recomputes the record;
-- after the PostgreSQL commit but before Redis application: retry loads the record and applies its stored transition;
-- after Redis application but before progress is recorded: retry verifies the applied marker/version/hash, records progress, and resumes remaining work;
+- before the PostgreSQL group/member transaction commits: Redis remains unchanged and retry recomputes the deterministic group;
+- after that commit but before all member applications: retry loads the expected set and applies only missing stored transitions;
+- after a member Redis application but before its receipt: retry verifies the applied marker/version/hash and records the missing receipt;
+- after all member receipts but before `STATE_APPLIED`: retry verifies exact expected-set completeness and atomically advances the group receipt;
+- after `STATE_APPLIED` but before decision/evidence persistence: retry scores from the same immutable lineage inputs without waiting on `COMPLETE`;
 - after sink/outbox delivery but before its receipt is recorded: deterministic message IDs and sink unique constraints make redelivery safe, and retry records or reconciles the receipt;
 - after `COMPLETE` but before offset commit: retry verifies the complete record and commits the offset without repeating effects.
 
@@ -591,11 +597,13 @@ Before lineage IDs are derived, `ReplayManifestCore` MUST include the version/ha
 
 Replay equivalence means exact equality of the canonical `RiskDecision` and `EvidencePackage` SHA-256 hashes defined in Section 14.3 for the same lineage. Deterministic event time, evidence cutoff time, state generation, replay run, and supersession/retraction links are hashed; operational processing/creation timestamps, delivery receipts, retries, and sink status are excluded from those content hashes and compared only as audit metadata. A divergence in either canonical hash MUST fail the replay gate and emit a comparison artifact. Contract verification MUST mutate each declared `ReplayManifestCore` input independently and prove that `replay_core_hash`, `state_generation_id`, and `replay_run_id`/lineage change; an input that can change canonical behavior without changing lineage fails the gate.
 
-Controlled replay/correction MUST consume through a dedicated replay consumer group and cursor and MUST NOT commit replay offsets to the live consumer group. It MUST rebuild into an inactive candidate `state_generation_id` namespace while live ingestion continues on the generation named by one global active-generation pointer. The frozen manifest MUST identify a source-start checkpoint and initial watermark; before cutover, the candidate replays deterministically through that frozen initial watermark and reconciles every affected staged decision, evidence, and case-correction artifact.
+Controlled replay/correction MUST consume through a dedicated replay consumer group and cursor and MUST NOT commit replay offsets to the live consumer group. It MAY rebuild only the affected partitions into an inactive candidate `state_generation_id` namespace while live ingestion continues on the generation named by one global active-generation pointer. The frozen manifest MUST identify the complete partition inventory, affected rebuild set, source-start checkpoints, and initial watermarks; before cutover, each affected candidate partition replays deterministically through its frozen initial watermark and reconciles its staged decision, evidence, and case-correction artifacts.
 
-Cutover fencing is partition-scoped, but generation activation is global. For every affected partition, the activation fence MUST acquire a bounded lease/fence, pause live state mutation and offset commit at a recorded barrier offset (consumption MAY buffer but MUST NOT mutate active state), record exact active coverage/state version/checkpoint, replay candidate generation `G2` through that barrier, and verify candidate coverage, state hash, and staged corrections. Only after every affected partition is fenced and `G2` is verified through every barrier may one atomic PostgreSQL/control transaction compare-and-set the single global active-generation pointer exactly once from the expected prior generation `G1` to `G2`. That transaction MUST also verify all expected partition coverage/state/checkpoint values, prove that no required cross-entity input spans generations, and authorize the generation-scoped correction outbox or append an activation token bound to `G2` and its entries. Any mismatch MUST fail closed. External scoring MUST resolve the one global pointer and MUST NOT observe or assemble a mixed-generation window.
+Cutover fencing and materialization are global even when rebuild scope is partial. Every partition MUST acquire a bounded lease/fence at a recorded concurrent barrier/head, pause live state mutation and offset commit (consumption MAY buffer), and record its exact `G1` coverage, state version/hash, and checkpoint. Each affected partition MUST replay rebuilt `G2` state through its barrier and verify staged corrections. Each untouched partition MUST be deterministically materialized/copied into the `G2` namespace from its fenced, verified `G1` state/checkpoint at that same recorded head, then read-back-verified with its source and `G2` hashes. No partition may mutate after its barrier until global activation succeeds or aborts.
 
-The global activation transaction MUST append an immutable `ActivationRecord` containing manifest/core hashes, candidate/prior generation, replay run, all partition barrier offsets, prior and candidate state hashes/versions, buffered-event ranges/hashes, activation token, actor/time, and immutable pre-activation staged-verification receipts: candidate hash/coverage, cross-entity generation check, conflict checks, and staged artifact counts/hashes. Correction consumers MUST require a valid activation token, apply only artifacts for the globally activated generation, and do so idempotently; only then may they change case/evidence current views, priority, or dispositions. Post-activation drain and correction consumers MUST append application receipts linked by activation token and generation ID; those receipts are not required before the `ActivationRecord` commits. Completion is a derived status only when all required post-activation receipts exist.
+Only after every partition exists and is verified in `G2` may one atomic PostgreSQL/control transaction compare-and-set the single global active-generation pointer exactly once from expected `G1` to `G2`. The transaction MUST verify a complete partition inventory/map; every partition's rebuild/materialization mode, barrier/head, checkpoint, coverage, and `G1`/`G2` state hashes; absence of post-barrier mutation; and that no required cross-entity input spans generations. It MUST also authorize the generation-scoped correction outbox or append an activation token bound to `G2` and its entries. If any partition cannot fence, materialize, or verify, activation MUST fail closed, `G1` remains active, all staged `G2` artifacts remain non-current, and every fence resumes `G1`. External scoring MUST NOT resolve `G2` until the complete inventory is present and MUST NOT observe or assemble a mixed-generation window.
+
+The global activation transaction MUST append an immutable `ActivationRecord` containing manifest/core hashes, candidate/prior generation, replay run, complete partition map with rebuild/materialization modes, all barrier/head offsets, prior and candidate state hashes/versions/checkpoints, buffered-event ranges/hashes, activation token, actor/time, and immutable pre-activation staged-verification receipts: candidate hash/coverage, materialization read-back, no-post-barrier-mutation, cross-entity generation check, conflict checks, and staged artifact counts/hashes. Correction consumers MUST require a valid activation token, apply only artifacts for the globally activated generation, and do so idempotently; only then may they change case/evidence current views, priority, or dispositions. Post-activation drain and correction consumers MUST append application receipts linked by activation token and generation ID; those receipts are not required before the `ActivationRecord` commits. Completion is a derived status only when all required post-activation receipts exist.
 
 After the successful global pointer compare-and-set, buffered and post-barrier events MUST deliver at least once, in order, into the newly active generation using live run lineage. Deterministic transition IDs, state-generation-keyed compare-and-set application, unique PostgreSQL/sink constraints, and idempotent outbox/case consumers MUST yield exactly one durable logical effect per event; redelivery is expected. Only then may fences release and normal offset commits resume. Fault drills MUST crash and redeliver before and after state compare-and-set, sink receipt, global pointer activation, and offset commit during buffer drain, and prove no lost, duplicate logical effect, mixed generation, or out-of-lineage event.
 
@@ -746,8 +754,8 @@ The deterministic merge/split source-state/result-state matrix is:
 | `MERGE_CASES` | every source is `NEW`, `TRIAGED`, `INVESTIGATING`, or `REOPENED`, with compatible nonterminal evidence state | Yes | new case `INVESTIGATING`; every source becomes `MERGED` |
 | `MERGE_CASES` | any terminal/`ESCALATED` source, mixed terminal/nonterminal sources, or incompatible approved disposition | No | Reviewer-authorized `REOPEN_CASE` is required for every affected source before merge. Merge MUST NOT create, copy, approve, or replace a terminal disposition. |
 | `MERGE_CASES` | any `PENDING_REVIEW` source | No — PENDING_REVIEW merge is prohibited | Reviewer must reject or supersede every proposal and return every source to `INVESTIGATING` before merge. Merge MUST NOT copy, create, approve, or replace any disposition. |
-| `SPLIT_CASE` | `NEW`, `TRIAGED`, `INVESTIGATING`, or `REOPENED` | Yes | every child is `INVESTIGATING`; source becomes `SPLIT` |
-| `SPLIT_CASE` | `PENDING_REVIEW`, any terminal state, or `ESCALATED` | No | Reject the proposal or reviewer-authorize `REOPEN_CASE` as applicable, then `START_INVESTIGATION` before split. Split MUST NOT create, copy, approve, or replace a terminal disposition. |
+| `SPLIT_CASE` | `NEW`, `TRIAGED`, or `INVESTIGATING` | Yes | every child is `INVESTIGATING`; source becomes `SPLIT` |
+| `SPLIT_CASE` | `REOPENED`, `PENDING_REVIEW`, any terminal state, or `ESCALATED` | No | Reject the proposal or reviewer-authorize `REOPEN_CASE` as applicable, then execute `START_INVESTIGATION` and reach `INVESTIGATING` before split. Split MUST NOT create, copy, approve, or replace a terminal disposition. |
 
 `MERGE_CASES` and `SPLIT_CASE` MUST authorize the actor against every source case, require optimistic-concurrency versions and evidence snapshots for every source, and perform all source/result updates, provenance records, and audit records atomically or not at all. Resulting cases MUST link every source case ID, immutable history, occurrence ID, evidence version/snapshot, and audit hash; source cases are never deleted and their `MERGED`/`SPLIT` tombstones are immutable provenance states. The audit payload MUST contain the command, actor/role and authorization decisions, all source/result IDs and versions, source/result states, occurrence and evidence IDs/hashes, proposal status/snapshot when present, reason, assignment/SLA decision, concurrency preconditions, and transaction/audit hash.
 
@@ -798,7 +806,7 @@ The AI investigator is a mandatory `v1.0.0` capability inside the Case/Agent API
 
 Approved tools MAY retrieve only bounded, authorized data from the exact `CaseEvidenceSnapshot` authorized for the AI run, including items in its underlying packages, for:
 
-- case summary and evidence package;
+- case summary, exact snapshot, and its authorized underlying evidence packages;
 - entity profile and causal transaction timeline;
 - historical behavior comparison;
 - bounded neighbors, path, and ring queries;
@@ -823,11 +831,13 @@ The agent output MUST be typed into:
 - recommended human checks;
 - run/provider/prompt/tool-policy versions and degradation state.
 
-Every AI run MUST bind to and record one exact authorized `CaseEvidenceSnapshot` ID/hash. Before display or persistence, deterministic validation MUST parse every cited `evidence_id`, verify membership in an underlying `EvidencePackage` referenced by that snapshot and per-item authorization for the human principal, reject unsupported citations, and ensure material observations have at least one valid citation. Failed validation MUST suppress the narrative and show `INSUFFICIENT EVIDENCE` plus a grounding-failure audit event.
+Every AI run MUST bind to and record one exact authorized `CaseEvidenceSnapshot` ID/hash. Before display or persistence, deterministic validation MUST parse every cited `evidence_id`, verify membership in any underlying `EvidencePackage` referenced by that snapshot and per-item authorization for the human principal, and validate each material claim under the contract below. Failed validation MUST suppress the narrative and show `INSUFFICIENT EVIDENCE` plus a grounding-failure audit event.
 
-A **material observation** is any asserted fact or inference that could change perceived subject risk, case priority, disposition, investigation scope, or a recommended human check. Each material observation MUST be a separate typed object with claim text, observation kind (`SOURCE_FACT` or `DERIVED_INFERENCE`), exact snapshot ID/hash, one or more authorized evidence IDs from that snapshot's underlying packages, contradiction IDs, and completeness/degradation flags.
+A **material observation** is any asserted fact or inference that could change perceived subject risk, case priority, disposition, investigation scope, or a recommended human check. Every material observation MUST originate in typed tool output as one canonical `GroundedClaim` containing claim ID/type, normalized subject, typed predicate, normalized object/value and unit where applicable, time scope, support relation, supporting evidence IDs with exact canonical field paths, contradiction IDs, and exact snapshot ID/hash. `claim_id` MUST derive from the Section 14.3 canonical hash of those fields excluding itself.
 
-Allowed confidence categories are `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`, and `INSUFFICIENT_EVIDENCE`. Deterministic validation assigns `HIGH` only when every material observation has authorized support, no cited contradiction, and no relevant incomplete/degraded flag; `MEDIUM` when all have authorized support and exactly one of contradiction or incomplete/degraded evidence is present; `LOW` when all have authorized support and both are present; `UNKNOWN` when the output asserts no material observation because the authorized snapshot does not answer the question; and `INSUFFICIENT_EVIDENCE` when a requested material conclusion lacks an authorized citation or grounding validation fails. Rationale MUST be derived only from cited support, contradictions, and completeness/degradation fields; model prose cannot upgrade the category.
+The validator MUST re-evaluate the typed predicate/support relation against the cited fields in the exact snapshot's authorized underlying packages and MUST deterministically enumerate every relevant contradiction in the authorized snapshot for the same normalized subject, predicate, and overlapping time scope. Citation membership alone is insufficient; an unrelated authorized item fails claim support, and an omitted relevant contradiction fails grounding. Model prose MUST NOT create, broaden, merge, or alter a material claim beyond a validated `GroundedClaim`.
+
+Allowed confidence categories are `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`, and `INSUFFICIENT_EVIDENCE`. Deterministic validation assigns `HIGH` only when every material claim has validated support, the exhaustive contradiction set is empty, and no relevant incomplete/degraded flag is present; `MEDIUM` when all have validated support and exactly one of a non-empty exhaustive contradiction set or incomplete/degraded evidence is present; `LOW` when all have validated support and both are present; `UNKNOWN` when the output asserts no material claim because the authorized snapshot does not answer the question; and `INSUFFICIENT_EVIDENCE` when a requested material conclusion lacks validated predicate support or grounding validation fails. Rationale MUST consume only validated support, the exhaustive contradiction set, and completeness/degradation fields; model prose cannot upgrade the category.
 
 ### 16.4 Prompt-injection controls
 
@@ -843,12 +853,13 @@ A provider without an approved retention/data-use record MUST remain disabled. P
 
 ### 16.6 AI adversarial evaluation
 
-The release candidate MUST execute a versioned suite covering prompt injection, indirect injection, forged evidence IDs, cross-case access, excessive tool calls, provider failure, forbidden actions, unsupported conclusions, malicious prior narratives, and malicious stored analyst notes, comments, and reason codes.
+The release candidate MUST execute a versioned suite covering prompt injection, indirect injection, forged evidence IDs, unrelated-but-authorized citations, omitted relevant contradictions, cross-case access, excessive tool calls, provider failure, forbidden actions, unsupported conclusions, malicious prior narratives, and malicious stored analyst notes, comments, and reason codes.
 
 Mandatory gates are:
 
 - 100% refusal of forbidden case/banking/model actions;
-- 0 displayed citations absent from the authorized evidence package;
+- 0 displayed citations absent from the exact authorized snapshot's authorized underlying packages;
+- 0 displayed material claims lacking validated field-level predicate support or omitting a relevant contradiction from the exhaustive snapshot scan;
 - 0 successful cross-case authorization violations;
 - 100% explicit `UNKNOWN` or `INSUFFICIENT EVIDENCE` behavior for evidence-starved cases;
 - all tool-call, timeout, and result-size limits enforced.
@@ -1049,10 +1060,11 @@ Required flows are:
 
 - raw event to normalized or quarantined outcome;
 - normalized event to ordered entity state and typed score outcome;
+- reciprocal-counterparty events whose complete expected command groups reach `STATE_APPLIED` and score without circular waiting, including crashes before a member receipt and before group `STATE_APPLIED` followed by deterministic recovery;
 - risk event to idempotent case and immutable evidence;
 - duplicate/conflicting/late event behavior;
 - crash between state, outbox, publication, and offset stages;
-- replay and projection reconciliation;
+- replay and projection reconciliation, including a one-partition rebuild while untouched partitions receive live traffic, followed by all-partition fencing/materialization into a complete verified `G2` inventory before global activation;
 - case concurrency, assignment, merge/split, review, disposition, and reopen;
 - authorized agent tools, grounding rejection, injection refusal, and provider degradation.
 
@@ -1256,7 +1268,7 @@ Release does not mean deployment or production certification. V1 MUST NOT claim 
 
 ### 25.3 Product and evidence
 
-- Alerts and cases reference immutable, reconstructable typed evidence.
+- Alerts and cases reference immutable typed evidence that is fully reconstructable while required source payloads remain retained/pinned; lawful `SOURCE_PAYLOAD_RETIRED` evidence is accepted only with its visible typed non-reconstructable/reduced guarantee and no full-reconstructability claim.
 - Case assignment, SLA/aging, deduplication, merge/split, review, disposition, and reopen are authorized and audited.
 - Graph, timeline, and evidence remain synchronized and disclose partial/stale state.
 - The manual analyst flow works during provider outage or in explicitly disclosed non-V1 `AI_DISABLED` candidates.
@@ -1264,7 +1276,7 @@ Release does not mean deployment or production certification. V1 MUST NOT claim 
 
 ### 25.4 AI, security, and governance
 
-- AI tools are read-only, bounded, per-call authorized, injection-tested, and deterministically grounded.
+- AI tools are read-only, bounded, per-call authorized to the exact snapshot and its authorized underlying packages, injection-tested, and deterministically grounded through field-validated `GroundedClaim` objects with exhaustive relevant-contradiction checks.
 - Roles and segregation of duties are enforced server-side.
 - Audit integrity, TLS, secrets, retention, SBOM, scans, threat models, and recovery satisfy Sections 18–22.
 - Model changes remain human-gated and reversible; drift never auto-promotes.
