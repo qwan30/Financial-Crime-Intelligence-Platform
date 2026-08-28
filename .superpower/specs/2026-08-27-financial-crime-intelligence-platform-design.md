@@ -572,7 +572,10 @@ Ordinary transition delivery rules apply directly only to the active generation.
 
 For each consumed record, the worker MUST:
 
-1. validate the normalized event and every deterministically enumerated expected group member before durable transition work; quarantine the whole invalid group or persist the valid group receipt and each member's deterministic transition;
+1. validate the normalized event and every deterministically enumerated expected group member before durable transition work, then choose exactly one whole-group branch: invalid input is terminal-quarantined under the existing Section 12.7 persisted receipt rule; if any member is late/replay-required, persist or verify the complete whole-group late-event receipt, advance the source offset only under that durable receipt, and end the live-delivery attempt without a live `EventTransitionResult` or state mutation, leaving candidate-generation controlled replay responsible for rebuild/reconciliation; otherwise, for a live-valid group, create or verify the valid group receipt and live group/member continuation records;
+
+Steps 2 through 6 apply only to a live-valid group for which those live group/member continuation records were created:
+
 2. apply every member transition to Redis using compare-and-set on its prior state version/hash and persist its applied marker/receipt;
 3. after the complete expected member set is verified, atomically advance the group to `STATE_APPLIED` and advance only contiguous entity/component state-coverage watermarks;
 4. wait for all required same-generation/cutoff `STATE_APPLIED` receipts, then create the immutable canonical decision/evidence result and required sink intents/outbox messages;
