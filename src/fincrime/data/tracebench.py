@@ -13,7 +13,10 @@ LABEL_DERIVED_COLUMNS = (
     "analyst_disposition",
 )
 
+_PUBLIC_TRANSACTION_COLUMNS = frozenset(
+    {"edge_id", "source_id", "target_id", "amount", "event_time"}
+)
+
 
 def public_transactions(frame: pl.DataFrame) -> pl.DataFrame:
-    forbidden = [name for name in LABEL_DERIVED_COLUMNS if name in frame.columns]
-    return frame.drop(forbidden)
+    return frame.select([name for name in frame.columns if name in _PUBLIC_TRANSACTION_COLUMNS])

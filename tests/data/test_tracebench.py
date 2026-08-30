@@ -10,9 +10,7 @@ def test_public_projection_removes_all_label_derived_columns() -> None:
             "source_id": ["a"],
             "target_id": ["b"],
             "amount": [100.0],
-            "scenario_id": ["s1"],
-            "_aml_designations": [1],
-            "split_mask": ["train"],
+            **{name: ["derived"] for name in LABEL_DERIVED_COLUMNS},
         }
     )
 
@@ -22,32 +20,90 @@ def test_public_projection_removes_all_label_derived_columns() -> None:
     assert public.columns == ["edge_id", "source_id", "target_id", "amount"]
 
 
-def test_public_projection_drops_each_forbidden_column_and_preserves_public_data() -> None:
+def test_public_projection_drops_indirect_signal_metadata() -> None:
     frame = pl.DataFrame(
         {
             "edge_id": ["e1"],
-            "_aml_designations": [1],
             "source_id": ["a"],
-            "_scenario_log": ["generated"],
             "target_id": ["b"],
-            "scenario_id": ["s1"],
             "amount": [100.0],
-            "case_id": ["c1"],
-            "currency": ["USD"],
-            "signal_columns": [["amount"]],
-            "split_mask": ["train"],
-            "In_Scenario": [True],
-            "analyst_disposition": ["confirmed"],
+            "derived_signal_metadata": [{"velocity": "high"}],
         }
     )
 
     public = public_transactions(frame)
 
-    assert public.columns == ["edge_id", "source_id", "target_id", "amount", "currency"]
+    assert public.columns == ["edge_id", "source_id", "target_id", "amount"]
+
+
+def test_public_projection_drops_renamed_label_and_signal_fields() -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [100.0],
+            "label": [1],
+            "is_suspicious": [True],
+            "velocity_signal": [0.9],
+        }
+    )
+
+    public = public_transactions(frame)
+
+    assert public.columns == ["edge_id", "source_id", "target_id", "amount"]
+
+
+def test_public_projection_drops_arbitrary_object_payloads() -> None:
+    payload = pl.Series("raw_payload", [object()], dtype=pl.Object)
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [100.0],
+        }
+    ).with_columns(payload)
+
+    public = public_transactions(frame)
+
+    assert public.columns == ["edge_id", "source_id", "target_id", "amount"]
+
+
+def test_public_projection_allows_event_time_but_drops_unknown_fields() -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [100.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+            "currency": ["USD"],
+        }
+    )
+
+    public = public_transactions(frame)
+
+    assert public.columns == ["edge_id", "source_id", "target_id", "amount", "event_time"]
     assert public.to_dict(as_series=False) == {
         "edge_id": ["e1"],
         "source_id": ["a"],
         "target_id": ["b"],
         "amount": [100.0],
-        "currency": ["USD"],
+        "event_time": ["2026-01-01T00:00:00Z"],
     }
+
+
+def test_public_projection_preserves_input_order_of_present_canonical_columns() -> None:
+    frame = pl.DataFrame(
+        {
+            "amount": [100.0],
+            "unknown": ["drop me"],
+            "event_time": ["2026-01-01T00:00:00Z"],
+            "edge_id": ["e1"],
+        }
+    )
+
+    public = public_transactions(frame)
+
+    assert public.columns == ["amount", "event_time", "edge_id"]
