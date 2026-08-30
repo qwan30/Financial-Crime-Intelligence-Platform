@@ -10,3 +10,5 @@ data/processed/
 artifacts/
 mlruns/
 .env
+.env.*
+!.env.example
