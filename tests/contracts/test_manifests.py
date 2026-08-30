@@ -85,6 +85,12 @@ def test_dataset_manifest_rejects_blank_id() -> None:
         _dataset_manifest(dataset_id="   ")
 
 
+@pytest.mark.parametrize("value", ["", "   "])
+def test_dataset_manifest_rejects_blank_license(value: str) -> None:
+    with pytest.raises(ValidationError):
+        _dataset_manifest(license=value)
+
+
 def test_dataset_manifest_rejects_naive_created_at() -> None:
     with pytest.raises(ValidationError):
         _dataset_manifest(created_at=datetime(2026, 8, 30, tzinfo=UTC).replace(tzinfo=None))
@@ -125,6 +131,13 @@ def test_trace_gold_manifest_rejects_uppercase_configuration_hash() -> None:
 def test_trace_gold_manifest_rejects_blank_ids(field: str) -> None:
     with pytest.raises(ValidationError):
         _trace_gold_manifest(**{field: "   "})
+
+
+@pytest.mark.parametrize("field", ["generator_version", "typology"])
+@pytest.mark.parametrize("value", ["", "   "])
+def test_trace_gold_manifest_rejects_blank_provenance(field: str, value: str) -> None:
+    with pytest.raises(ValidationError):
+        _trace_gold_manifest(**{field: value})
 
 
 @pytest.mark.parametrize("field", ["mandatory_anchors", "visibility_boundary_ids"])

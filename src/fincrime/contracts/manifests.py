@@ -15,7 +15,8 @@ from pydantic import (
     StringConstraints,
 )
 
-NonBlankId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+NonBlankId = NonBlankText
 
 
 class FrozenModel(BaseModel):
@@ -31,7 +32,7 @@ class TraceLabel(StrEnum):
 class DatasetManifest(FrozenModel):
     dataset_id: NonBlankId
     source_url: HttpUrl
-    license: str = Field(min_length=1)
+    license: NonBlankText
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     schema_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     created_at: AwareDatetime
@@ -47,11 +48,11 @@ class TraceEdge(FrozenModel):
 
 class TraceGoldManifest(FrozenModel):
     dataset_id: NonBlankId
-    generator_version: str
+    generator_version: NonBlankText
     generator_seed: StrictInt
     configuration_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     case_id: NonBlankId
-    typology: str
+    typology: NonBlankText
     edges: tuple[TraceEdge, ...]
     mandatory_anchors: tuple[NonBlankId, ...]
     visibility_boundary_ids: tuple[NonBlankId, ...] = ()
