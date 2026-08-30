@@ -1,0 +1,39 @@
+---
+title: Luồng trạng thái training và feedback nghiệp vụ
+---
+flowchart TB
+  accTitle: Trạng thái training và feedback nghiệp vụ
+  accDescr: Training run đi qua data gate đến selected hoặc null result; case feedback đi qua adjudication và chỉ accepted truth mới tạo training run mới.
+  subgraph train["TrainingRun lifecycle"]
+    direction LR
+    prereg["PREREGISTERED"] --> verify{"Data + leakage pass?"}
+    verify -->|"No"| blocked["BLOCKED_DATA"]
+    verify -->|"Yes"| fit["FITTED"]
+    fit --> val["VALIDATED"] --> cal["CALIBRATED"] --> frozen["FROZEN"]
+    frozen --> tested["TESTED"] --> traceEval["TRACE_EVALUATED"] --> decide{"Human promotion gate"}
+    decide -->|"Pass"| selected["SELECTED"]
+    decide -->|"Fail"| nullResult["KEEP_SIMPLER / NULL_RESULT"]
+  end
+
+  subgraph caseflow["Investigation + feedback lifecycle"]
+    direction LR
+    seed["Suspicious seed"] --> trace["Bounded trace"]
+    trace --> snapshot["Immutable CaseSnapshot + Evidence"]
+    snapshot --> review["Investigator review"]
+    review --> disposition{"Disposition"}
+    disposition --> feedback["Feedback SUBMITTED"]
+    feedback --> pending["PENDING_ADJUDICATION"]
+    pending -->|"Accept"| accepted["ACCEPTED truth"]
+    pending -->|"Reject"| rejected["REJECTED audit-only"]
+  end
+
+  accepted -. "versioned dataset; new run only" .-> prereg
+
+  classDef state fill:#e8f0fe,stroke:#2563eb,color:#102a43,stroke-width:2px;
+  classDef evidence fill:#e6fffa,stroke:#087f5b,color:#102a43,stroke-width:2px;
+  classDef decision fill:#fff7e6,stroke:#c05621,color:#102a43,stroke-width:2px;
+  classDef failure fill:#fff1f2,stroke:#be123c,color:#881337,stroke-width:2px;
+  class prereg,fit,val,cal,frozen,tested,traceEval,seed,trace,review,feedback,pending state;
+  class snapshot,accepted,selected evidence;
+  class verify,decide,disposition decision;
+  class blocked,nullResult,rejected failure;
