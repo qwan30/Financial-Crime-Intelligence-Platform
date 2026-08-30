@@ -1,0 +1,47 @@
+---
+title: Tuần tự điều tra một case
+---
+sequenceDiagram
+  accTitle: Tuần tự điều tra một case AML
+  accDescr: Investigator mở case, có thể mở rộng trace, dùng hoặc bỏ qua DeepSeek, rồi ghi disposition và feedback append-only.
+  autonumber
+  actor Analyst as AML Investigator
+  participant UI as Investigator Workbench
+  participant API as Case API
+  participant Case as Case/Evidence Service
+  participant Trace as Trace Engine
+  participant Agent as LangGraph (OPTIONAL)
+  participant LLM as DeepSeek (OPTIONAL)
+  participant Guard as Local Validator
+
+  Analyst->>UI: Mở case
+  UI->>API: GET /cases/{case_id}
+  API->>Case: Đọc immutable CaseSnapshot
+  Case-->>API: Case + evidence IDs + trace IDs
+  API-->>UI: Typed response envelope
+
+  opt Analyst yêu cầu mở rộng trace
+    UI->>Trace: TraceRequest (≤4 hops, ≤100 edges)
+    Trace->>Case: Ghi trace/evidence snapshot mới
+    Trace-->>UI: COMPLETE / TRACE_TRUNCATED / BOUNDARY_REACHED
+  end
+
+  alt LLM_OFF hoặc provider không khả dụng
+    UI-->>Analyst: Case vẫn hoạt động, AI_UNAVAILABLE
+  else DEEPSEEK_ON
+    UI->>Agent: Bắt đầu investigation workflow
+    Agent->>Case: Chỉ gọi bounded read-only tools
+    Case-->>Agent: Supporting / mitigating / missing evidence
+    Agent->>LLM: Structured request trong token/VND cap
+    LLM-->>Agent: Structured draft
+    Agent->>Guard: Validate schema + evidence IDs
+    alt Draft hợp lệ
+      Guard-->>UI: AI_HYPOTHESIS có citation
+    else Draft hoặc citation không hợp lệ
+      Guard-->>UI: INVALID_OUTPUT, không render claim
+    end
+  end
+
+  Analyst->>UI: Chọn disposition + correction
+  UI->>Case: Append AnalystFeedbackEvent
+  Case-->>UI: Feedback pending adjudication

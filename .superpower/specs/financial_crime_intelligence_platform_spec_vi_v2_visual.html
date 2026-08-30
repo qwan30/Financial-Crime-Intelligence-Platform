@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+
+<html data-theme="light" lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Bản V2 tiếng Việt: đầy đủ Design Specification kèm sơ đồ kiến trúc, flow, graph và model trực quan." name="description"/>
+<title>Financial Crime Intelligence Platform — Visual Design Spec V2 (Tiếng Việt)</title>
+<style>
+:root{
+  --bg:#f5f7fb; --panel:#ffffff; --panel-2:#f8fafc; --text:#172033; --muted:#64748b;
+  --line:#e2e8f0; --accent:#155eef; --accent-2:#0f3f99; --code:#0f172a; --code-text:#dbeafe;
+  --quote:#eff6ff; --good:#0f766e; --shadow:0 10px 28px rgba(15,23,42,.07);
+}
+[data-theme="dark"]{
+  --bg:#0b1020; --panel:#11182a; --panel-2:#0d1424; --text:#e7edf7; --muted:#9aa9c0;
+  --line:#263149; --accent:#78a8ff; --accent-2:#a9c6ff; --code:#070b14; --code-text:#dbeafe;
+  --quote:#101e38; --good:#5eead4; --shadow:0 10px 30px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.72}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0;z-index:1000}
+.topbar{height:64px;position:sticky;top:0;z-index:900;background:color-mix(in srgb,var(--panel) 88%, transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 22px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800}.brand-badge{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:white;font-size:14px}
+.top-actions{display:flex;gap:8px}.top-actions button{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:8px 11px;border-radius:10px;cursor:pointer;font-weight:650}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);max-width:1500px;margin:0 auto}
+.sidebar{position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto;border-right:1px solid var(--line);padding:18px 16px 40px;background:var(--panel-2)}
+.search{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:11px 12px;border-radius:11px;outline:none;margin-bottom:14px}.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%, transparent)}
+.toc-title{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:800;margin:8px 6px 10px}.toc{display:flex;flex-direction:column;gap:2px}.toc a{color:var(--muted);border-radius:8px;padding:7px 9px;font-size:13px;line-height:1.35}.toc a:hover,.toc a.active{background:var(--panel);color:var(--accent);text-decoration:none}.toc-h3{padding-left:22px!important;font-size:12px!important}
+.main{min-width:0;padding:38px 48px 90px;max-width:1050px;width:100%;margin:0 auto}
+.hero{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:20px;padding:28px 30px;margin-bottom:24px;box-shadow:var(--shadow)}
+.hero h1{font-size:clamp(28px,4vw,44px);line-height:1.12;margin:0 0 14px;letter-spacing:-.035em}.hero p{margin:0;color:var(--muted)}
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px}.metric{border:1px solid var(--line);border-radius:13px;padding:12px 13px;background:var(--panel)}.metric b{display:block;font-size:19px}.metric span{font-size:12px;color:var(--muted)}
+.article-content>h1{display:none}.article-content>p:first-of-type,.article-content>p:nth-of-type(2),.article-content>p:nth-of-type(3),.article-content>p:nth-of-type(4),.article-content>p:nth-of-type(5){display:none}
+.article-content>hr{display:none}
+.doc-section{background:var(--panel);border:1px solid var(--line);border-radius:18px;margin:0 0 18px;box-shadow:0 4px 16px rgba(15,23,42,.035);overflow:hidden;scroll-margin-top:84px}
+.section-heading{display:flex;align-items:center;gap:12px;padding:19px 22px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.section-heading h2{margin:0;flex:1;font-size:23px;line-height:1.25;letter-spacing:-.02em;scroll-margin-top:86px}.section-toggle{border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);padding:7px 10px;cursor:pointer;font-size:12px}.section-body{padding:20px 24px 24px}.doc-section.collapsed .section-body{display:none}.doc-section.collapsed .section-heading{border-bottom:0}
+h3{font-size:18px;margin:28px 0 12px;color:var(--accent-2);scroll-margin-top:86px}h4{font-size:15px;margin:22px 0 9px}
+p{margin:10px 0 14px}ul,ol{padding-left:24px;margin:10px 0 16px}li{margin:5px 0}li::marker{color:var(--accent)}
+strong{font-weight:800}blockquote{margin:18px 0;padding:14px 18px;border-left:4px solid var(--accent);background:var(--quote);border-radius:0 12px 12px 0;color:var(--text)}
+code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;background:color-mix(in srgb,var(--accent) 9%,var(--panel-2));border:1px solid var(--line);padding:.14em .38em;border-radius:6px;font-size:.88em;overflow-wrap:anywhere}
+pre{background:var(--code);color:var(--code-text);padding:18px 20px;border-radius:13px;overflow:auto;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);line-height:1.5}pre code{background:none;border:0;padding:0;color:inherit;font-size:13px;white-space:pre}
+hr{border:0;border-top:1px solid var(--line);margin:24px 0}
+table{border-collapse:collapse;width:100%;display:block;overflow:auto;margin:16px 0}th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;white-space:nowrap}th{background:var(--panel-2)}
+.note{padding:14px 16px;border:1px solid var(--line);background:var(--panel);border-radius:13px;margin:0 0 22px;color:var(--muted);font-size:14px}.note b{color:var(--text)}
+.no-results{display:none;text-align:center;color:var(--muted);padding:40px 10px}
+footer{color:var(--muted);font-size:13px;text-align:center;margin-top:34px}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{display:none}.main{padding:28px 22px 70px}.hero-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.topbar{padding:0 12px}.brand span:last-child{display:none}.top-actions button:nth-child(2),.top-actions button:nth-child(3){display:none}.main{padding:20px 12px 60px}.hero{padding:22px 18px}.hero-grid{grid-template-columns:1fr 1fr}.section-heading{padding:16px}.section-body{padding:16px}.section-heading h2{font-size:20px}}
+@media print{.topbar,.sidebar,.section-toggle,.progress{display:none!important}.layout{display:block}.main{max-width:none;padding:0}.doc-section{break-inside:avoid;box-shadow:none}.section-body{display:block!important}.hero{box-shadow:none}}
+
+/* ===== V2 Visual Layer ===== */
+:root{
+  --viz1:#2563eb; --viz2:#7c3aed; --viz3:#0891b2; --viz4:#059669; --viz5:#d97706; --viz6:#dc2626;
+  --viz-soft:color-mix(in srgb,var(--accent) 7%,var(--panel));
+}
+[data-theme="dark"]{
+  --viz1:#7aa7ff; --viz2:#b79cff; --viz3:#67d4ed; --viz4:#65d6b1; --viz5:#ffc567; --viz6:#ff8b8b;
+}
+.hero{position:relative;overflow:hidden}.hero:after{content:"V2 • VISUAL SPEC";position:absolute;right:20px;top:18px;font-size:10px;letter-spacing:.16em;font-weight:900;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel));padding:5px 8px;border-radius:999px}
+.visual-index{margin:0 0 26px;border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+.visual-index h2{margin:0 0 5px;font-size:22px;letter-spacing:-.02em}.visual-index>p{margin:0 0 17px;color:var(--muted);font-size:14px}
+.system-map{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));align-items:stretch;gap:8px;overflow:auto;padding:4px 1px 9px}.system-map .map-node{min-width:108px;display:flex;flex-direction:column;justify-content:center;border:1px solid var(--line);background:var(--panel-2);padding:11px 10px;border-radius:12px;text-align:center;font-weight:800;font-size:12px;line-height:1.3;position:relative}.system-map .map-node small{font-weight:600;color:var(--muted);margin-top:4px}.system-map .map-node:not(:last-child):after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--muted);z-index:2;font-size:16px}.visual-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.visual-links a{font-size:12px;font-weight:750;border:1px solid var(--line);background:var(--panel-2);padding:7px 9px;border-radius:999px;text-decoration:none;color:var(--text)}.visual-links a:hover{border-color:var(--accent);color:var(--accent)}
+.viz{border:1px solid var(--line);background:linear-gradient(180deg,var(--viz-soft),var(--panel));border-radius:16px;padding:16px;margin:2px 0 22px;overflow:hidden}.viz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.viz-title{font-size:14px;font-weight:900;letter-spacing:.01em}.viz-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}.viz-tag{flex:none;font-size:10px;font-weight:900;letter-spacing:.1em;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:999px;padding:5px 7px;background:var(--panel)}
+.flow{display:flex;gap:9px;align-items:stretch;overflow:auto;padding:2px 2px 7px}.flow .fnode{min-width:132px;flex:1;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px 10px;display:flex;flex-direction:column;justify-content:center;text-align:center;font-size:12px;font-weight:800;line-height:1.35;position:relative}.flow .fnode small{color:var(--muted);font-size:10px;margin-top:4px;font-weight:600}.flow .fnode:not(:last-child):after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted);z-index:2}.fnode.c1{border-top:3px solid var(--viz1)}.fnode.c2{border-top:3px solid var(--viz2)}.fnode.c3{border-top:3px solid var(--viz3)}.fnode.c4{border-top:3px solid var(--viz4)}.fnode.c5{border-top:3px solid var(--viz5)}.fnode.c6{border-top:3px solid var(--viz6)}
+.vgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vgrid.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}.vgrid.cols4{grid-template-columns:repeat(4,minmax(0,1fr))}.vcard{border:1px solid var(--line);background:var(--panel);border-radius:13px;padding:12px}.vcard h4{margin:0 0 5px;font-size:13px;color:var(--text)}.vcard p{font-size:11px;color:var(--muted);margin:0;line-height:1.5}.vcard strong{color:var(--text)}
+.splitbar{display:grid;grid-template-columns:4fr 2fr 2fr;gap:5px;margin:8px 0}.splitbar>div{padding:14px 10px;border-radius:10px;text-align:center;font-weight:850;font-size:12px;border:1px solid var(--line);background:var(--panel)}.splitbar .train{border-top:4px solid var(--viz4)}.splitbar .cal{border-top:4px solid var(--viz5)}.splitbar .hold{border-top:4px solid var(--viz6)}.timeline-note{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}.branch{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}.branch .center{font-size:20px;color:var(--muted)}
+.model-stack{display:grid;grid-template-columns:1.15fr .8fr 1.15fr;gap:10px;align-items:stretch}.stack-col{display:flex;flex-direction:column;gap:8px}.stack-box{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px;font-size:12px;text-align:center;font-weight:800}.stack-mid{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;color:var(--muted);font-size:12px}.stack-mid b{font-size:22px;color:var(--accent)}
+.fusion{display:grid;grid-template-columns:1fr 145px 1fr;gap:12px;align-items:center}.fusion-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fusion-pill{border:1px solid var(--line);background:var(--panel);padding:9px;border-radius:10px;text-align:center;font-size:11px;font-weight:750}.fusion-core{border:2px solid color-mix(in srgb,var(--accent) 50%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-radius:50%;aspect-ratio:1;display:grid;place-items:center;text-align:center;font-weight:900;font-size:12px;padding:10px}.fusion-output{border:1px solid var(--line);border-left:4px solid var(--viz6);background:var(--panel);padding:16px;border-radius:12px;text-align:center;font-size:12px}.fusion-output b{display:block;font-size:20px;margin-bottom:4px}
+.graph-wrap{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:7px}.graph-wrap svg{width:100%;height:auto;display:block}.graph-edge{stroke:color-mix(in srgb,var(--muted) 65%,transparent);stroke-width:2}.graph-label{fill:var(--muted);font-size:10px}.graph-node{stroke:var(--panel);stroke-width:4}.graph-text{fill:var(--text);font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:middle}.graph-sub{fill:var(--muted);font-size:8px;text-anchor:middle}.n1{fill:color-mix(in srgb,var(--viz1) 22%,var(--panel))}.n2{fill:color-mix(in srgb,var(--viz2) 22%,var(--panel))}.n3{fill:color-mix(in srgb,var(--viz3) 22%,var(--panel))}.n4{fill:color-mix(in srgb,var(--viz4) 22%,var(--panel))}.n5{fill:color-mix(in srgb,var(--viz5) 24%,var(--panel))}.n6{fill:color-mix(in srgb,var(--viz6) 18%,var(--panel))}
+.lifecycle{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;overflow:auto;padding-bottom:5px}.life{min-width:115px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px;text-align:center;font-size:11px;font-weight:800;position:relative}.life:not(:last-child):after{content:"→";position:absolute;right:-8px;top:50%;color:var(--muted);font-size:15px}.gate{border:2px dashed color-mix(in srgb,var(--viz5) 60%,var(--line));background:color-mix(in srgb,var(--viz5) 6%,var(--panel))}.stop{border-top:3px solid var(--viz6)}
+.matrix{display:grid;grid-template-columns:140px repeat(3,minmax(120px,1fr));gap:1px;border:1px solid var(--line);background:var(--line);border-radius:12px;overflow:auto}.matrix>div{background:var(--panel);padding:9px;font-size:11px;min-width:120px}.matrix .mh{font-weight:900;background:var(--panel-2)}.matrix .rowh{font-weight:800;color:var(--text)}.matrix .ok{font-weight:800;color:var(--good)}
+.viz-note{margin-top:10px;font-size:11px;color:var(--muted);border-top:1px dashed var(--line);padding-top:9px}.diagram-count{font-weight:850;color:var(--accent)}
+@media(max-width:800px){.vgrid.cols3,.vgrid.cols4{grid-template-columns:1fr 1fr}.model-stack,.fusion,.branch{grid-template-columns:1fr}.stack-mid{min-height:50px}.fusion-core{width:120px;margin:auto}.matrix{grid-template-columns:120px repeat(3,150px)}}
+@media(max-width:520px){.vgrid,.vgrid.cols3,.vgrid.cols4{grid-template-columns:1fr}.viz{padding:13px}.system-map{grid-template-columns:repeat(7,130px)}.flow .fnode{min-width:125px}.splitbar{grid-template-columns:1fr}.hero:after{display:none}}
+@media print{.viz,.visual-index{break-inside:avoid;box-shadow:none}.system-map,.flow,.lifecycle{overflow:visible}.viz-tag{display:none}}
+</style>
+</head>
+<body>
+<div class="progress"></div>
+<header class="topbar">
+<div class="brand"><div class="brand-badge">AML</div><span>Financial Crime Intelligence Platform</span></div>
+<div class="top-actions">
+<button id="themeBtn" type="button">Sáng / Tối</button>
+<button id="collapseAll" type="button">Thu gọn tất cả</button>
+<button id="expandAll" type="button">Mở tất cả</button>
+</div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+<input class="search" id="search" placeholder="Tìm trong tài liệu…" type="search"/>
+<div class="toc-title">Mục lục</div>
+<nav class="toc"><a class="toc-h2" href="#1-tom-tat-dieu-hanh">1. Tóm tắt điều hành</a>
+<a class="toc-h2" href="#2-muc-tieu-du-an">2. Mục tiêu dự án</a>
+<a class="toc-h3" href="#2-1-muc-tieu-chinh">2.1 Mục tiêu chính</a>
+<a class="toc-h3" href="#2-2-muc-tieu-phu">2.2 Mục tiêu phụ</a>
+<a class="toc-h2" href="#3-nhung-thu-khong-thuoc-pham-vi-v1">3. Những thứ không thuộc phạm vi V1</a>
+<a class="toc-h2" href="#4-dinh-nghia-bai-toan-cot-loi">4. Định nghĩa bài toán cốt lõi</a>
+<a class="toc-h3" href="#4-1-doi-tuong-cham-diem-chinh">4.1 Đối tượng chấm điểm chính</a>
+<a class="toc-h3" href="#4-2-cac-aml-typology-cot-loi">4.2 Các AML typology cốt lõi</a>
+<a class="toc-h2" href="#5-chien-luoc-dataset">5. Chiến lược dataset</a>
+<a class="toc-h3" href="#5-1-dataset-chinh-ausaml-amlbench">5.1 Dataset chính: AusAML / AMLBench</a>
+<a class="toc-h3" href="#5-2-synthetic-stress-dataset-ibm-amlsim">5.2 Synthetic stress dataset: IBM AMLSim</a>
+<a class="toc-h3" href="#5-3-chinh-sach-tach-du-lieu">5.3 Chính sách tách dữ liệu</a>
+<a class="toc-h2" href="#6-chinh-sach-danh-gia-theo-thoi-gian">6. Chính sách đánh giá theo thời gian</a>
+<a class="toc-h2" href="#7-banking-graph-ontology">7. Banking Graph Ontology</a>
+<a class="toc-h3" href="#7-1-cac-loai-node-cot-loi">7.1 Các loại node cốt lõi</a>
+<a class="toc-h3" href="#7-2-cac-loai-edge-relationship-cot-loi">7.2 Các loại edge/relationship cốt lõi</a>
+<a class="toc-h3" href="#7-3-yeu-cau-doi-voi-graph-representation">7.3 Yêu cầu đối với graph representation</a>
+<a class="toc-h2" href="#8-feature-system">8. Feature System</a>
+<a class="toc-h3" href="#8-1-cac-nhom-feature">8.1 Các nhóm feature</a>
+<a class="toc-h3" href="#8-2-feature-store">8.2 Feature store</a>
+<a class="toc-h2" href="#9-chien-luoc-model">9. Chiến lược model</a>
+<a class="toc-h3" href="#9-1-baseline-ladder">9.1 Baseline ladder</a>
+<a class="toc-h3" href="#9-2-muc-tieu-hybrid-modeling">9.2 Mục tiêu hybrid modeling</a>
+<a class="toc-h3" href="#9-3-supervised-va-unsupervised-heads">9.3 Supervised và unsupervised heads</a>
+<a class="toc-h2" href="#10-temporal-graph-model">10. Temporal Graph Model</a>
+<a class="toc-h3" href="#10-1-event-based-modeling">10.1 Event-based modeling</a>
+<a class="toc-h3" href="#10-2-heterogeneous-integration">10.2 Heterogeneous integration</a>
+<a class="toc-h2" href="#11-risk-fusion">11. Risk Fusion</a>
+<a class="toc-h3" href="#11-1-dau-vao-cua-risk-fusion">11.1 Đầu vào của risk fusion</a>
+<a class="toc-h3" href="#11-2-chien-luoc-fusion-cua-v1">11.2 Chiến lược fusion của V1</a>
+<a class="toc-h2" href="#12-kham-pha-suspicious-subgraph">12. Khám phá suspicious subgraph</a>
+<a class="toc-h2" href="#13-thi-nghiem-unknown-typology">13. Thí nghiệm Unknown-Typology</a>
+<a class="toc-h3" href="#13-1-protocol">13.1 Protocol</a>
+<a class="toc-h3" href="#13-2-vi-du">13.2 Ví dụ</a>
+<a class="toc-h3" href="#13-3-metrics">13.3 Metrics</a>
+<a class="toc-h2" href="#14-adversarial-amlsim-stress-testing">14. Adversarial AMLSim Stress Testing</a>
+<a class="toc-h2" href="#15-kien-truc-online-streaming">15. Kiến trúc Online Streaming</a>
+<a class="toc-h3" href="#15-1-luong-event-chinh">15.1 Luồng event chính</a>
+<a class="toc-h3" href="#15-2-rang-buoc-hot-path">15.2 Ràng buộc hot path</a>
+<a class="toc-h3" href="#15-3-muc-tieu-latency">15.3 Mục tiêu latency</a>
+<a class="toc-h2" href="#16-trach-nhiem-cua-graph-state-va-neo4j">16. Trách nhiệm của Graph State và Neo4j</a>
+<a class="toc-h3" href="#16-1-training-graph">16.1 Training graph</a>
+<a class="toc-h3" href="#16-2-online-temporal-state">16.2 Online temporal state</a>
+<a class="toc-h3" href="#16-3-neo4j">16.3 Neo4j</a>
+<a class="toc-h2" href="#17-evidence-model">17. Evidence Model</a>
+<a class="toc-h3" href="#17-1-evidence-package">17.1 Evidence package</a>
+<a class="toc-h3" href="#17-2-evidence-invariants">17.2 Evidence invariants</a>
+<a class="toc-h2" href="#18-ai-investigation-agent">18. AI Investigation Agent</a>
+<a class="toc-h3" href="#18-1-pham-vi">18.1 Phạm vi</a>
+<a class="toc-h3" href="#18-2-orchestration-duoc-khuyen-nghi">18.2 Orchestration được khuyến nghị</a>
+<a class="toc-h3" href="#18-3-agent-tools">18.3 Agent tools</a>
+<a class="toc-h3" href="#18-4-agent-workflow">18.4 Agent workflow</a>
+<a class="toc-h3" href="#18-5-ranh-gioi-an-toan-cua-agent">18.5 Ranh giới an toàn của agent</a>
+<a class="toc-h3" href="#18-6-yeu-cau-grounding">18.6 Yêu cầu grounding</a>
+<a class="toc-h2" href="#19-analyst-workflow">19. Analyst Workflow</a>
+<a class="toc-h3" href="#19-1-cac-disposition-duoc-phep">19.1 Các disposition được phép</a>
+<a class="toc-h3" href="#19-2-luu-feedback">19.2 Lưu feedback</a>
+<a class="toc-h3" href="#19-3-cach-dung-feedback">19.3 Cách dùng feedback</a>
+<a class="toc-h2" href="#20-investigation-ui">20. Investigation UI</a>
+<a class="toc-h3" href="#20-1-rang-buoc-nghien-cuu">20.1 Ràng buộc nghiên cứu</a>
+<a class="toc-h3" href="#20-2-cac-screen-chinh">20.2 Các screen chính</a>
+<a class="toc-h3" href="#20-3-frontend-stack-va-workspace-chinh">20.3 Frontend stack và workspace chính</a>
+<a class="toc-h2" href="#21-data-quality-va-governance">21. Data Quality và Governance</a>
+<a class="toc-h3" href="#21-1-event-validation">21.1 Event validation</a>
+<a class="toc-h3" href="#21-2-provenance">21.2 Provenance</a>
+<a class="toc-h3" href="#21-3-artifact-integrity">21.3 Artifact integrity</a>
+<a class="toc-h2" href="#22-privacy-va-security-simulation">22. Privacy và Security Simulation</a>
+<a class="toc-h2" href="#23-drift-monitoring">23. Drift Monitoring</a>
+<a class="toc-h3" href="#23-1-feature-drift">23.1 Feature drift</a>
+<a class="toc-h3" href="#23-2-graph-drift">23.2 Graph drift</a>
+<a class="toc-h3" href="#23-3-model-drift">23.3 Model drift</a>
+<a class="toc-h2" href="#24-model-lifecycle">24. Model Lifecycle</a>
+<a class="toc-h3" href="#24-1-retraining-workflow">24.1 Retraining workflow</a>
+<a class="toc-h2" href="#25-evaluation-framework">25. Evaluation Framework</a>
+<a class="toc-h3" href="#25-1-core-model-metrics">25.1 Core model metrics</a>
+<a class="toc-h3" href="#25-2-aml-metrics">25.2 AML metrics</a>
+<a class="toc-h3" href="#25-3-operational-metrics">25.3 Operational metrics</a>
+<a class="toc-h3" href="#25-4-yeu-cau-comparison">25.4 Yêu cầu comparison</a>
+<a class="toc-h2" href="#26-ablation-studies">26. Ablation Studies</a>
+<a class="toc-h2" href="#27-observability">27. Observability</a>
+<a class="toc-h3" href="#27-1-stack">27.1 Stack</a>
+<a class="toc-h3" href="#27-2-operational-telemetry">27.2 Operational telemetry</a>
+<a class="toc-h3" href="#27-3-grafana-views">27.3 Grafana views</a>
+<a class="toc-h2" href="#28-infrastructure">28. Infrastructure</a>
+<a class="toc-h3" href="#28-1-moi-truong-chinh">28.1 Môi trường chính</a>
+<a class="toc-h3" href="#28-2-kubernetes">28.2 Kubernetes</a>
+<a class="toc-h2" href="#29-service-boundaries">29. Service Boundaries</a>
+<a class="toc-h3" href="#29-1-ingestion-service">29.1 Ingestion service</a>
+<a class="toc-h3" href="#29-2-feature-engine">29.2 Feature engine</a>
+<a class="toc-h3" href="#29-3-graph-state-service">29.3 Graph-state service</a>
+<a class="toc-h3" href="#29-4-scoring-service">29.4 Scoring service</a>
+<a class="toc-h3" href="#29-5-case-api">29.5 Case API</a>
+<a class="toc-h3" href="#29-6-investigation-agent">29.6 Investigation agent</a>
+<a class="toc-h3" href="#29-7-investigator-web">29.7 Investigator web</a>
+<a class="toc-h2" href="#30-nguyen-tac-api-va-event-design">30. Nguyên tắc API và Event Design</a>
+<a class="toc-h2" href="#31-failure-handling">31. Failure Handling</a>
+<a class="toc-h3" href="#31-1-invalid-data">31.1 Invalid data</a>
+<a class="toc-h3" href="#31-2-feature-state-failure">31.2 Feature/state failure</a>
+<a class="toc-h3" href="#31-3-model-failure">31.3 Model failure</a>
+<a class="toc-h3" href="#31-4-agent-failure">31.4 Agent failure</a>
+<a class="toc-h3" href="#31-5-persistence-failure">31.5 Persistence failure</a>
+<a class="toc-h2" href="#32-testing-strategy">32. Testing Strategy</a>
+<a class="toc-h3" href="#32-1-unit-tests">32.1 Unit tests</a>
+<a class="toc-h3" href="#32-2-ml-tests">32.2 ML tests</a>
+<a class="toc-h3" href="#32-3-integration-tests">32.3 Integration tests</a>
+<a class="toc-h3" href="#32-4-end-to-end-test">32.4 End-to-end test</a>
+<a class="toc-h3" href="#32-5-performance-tests">32.5 Performance tests</a>
+<a class="toc-h2" href="#33-research-artifacts">33. Research Artifacts</a>
+<a class="toc-h2" href="#34-monorepo-layout">34. Monorepo Layout</a>
+<a class="toc-h2" href="#35-reuse-strategy-va-attribution">35. Reuse Strategy và Attribution</a>
+<a class="toc-h2" href="#36-cac-diem-khac-biet-chinh">36. Các điểm khác biệt chính</a>
+<a class="toc-h2" href="#37-acceptance-criteria-definition-of-done">37. Acceptance Criteria / Definition of Done</a>
+<a class="toc-h3" href="#37-1-end-to-end-functional-acceptance">37.1 End-to-end functional acceptance</a>
+<a class="toc-h3" href="#37-2-ml-research-acceptance">37.2 ML/research acceptance</a>
+<a class="toc-h3" href="#37-3-product-acceptance">37.3 Product acceptance</a>
+<a class="toc-h3" href="#37-4-systems-acceptance">37.4 Systems acceptance</a>
+<a class="toc-h3" href="#37-5-governance-acceptance">37.5 Governance acceptance</a>
+<a class="toc-h2" href="#38-tieu-chi-thanh-cong">38. Tiêu chí thành công</a>
+<a class="toc-h2" href="#39-mo-rong-tuong-lai">39. Mở rộng tương lai</a>
+<a class="toc-h2" href="#40-tuyen-bo-san-pham-cuoi-cung">40. Tuyên bố sản phẩm cuối cùng</a></nav>
+</aside>
+<main class="main">
+<div class="hero">
+<h1>Financial Crime Intelligence Platform</h1>
+<p>Đặc tả thiết kế — bản tiếng Việt dễ đọc, giữ nguyên cấu trúc kỹ thuật của tài liệu gốc.</p>
+<div class="hero-grid">
+<div class="metric"><b>40</b><span>phần chính</span></div>
+<div class="metric"><b>AML</b><span>fiat banking</span></div>
+<div class="metric"><b>&lt; 500 ms</b><span>p95 scoring target</span></div>
+<div class="metric"><b>V1</b><span>research + production-grade investigation</span></div>
+</div>
+</div><section aria-label="Bản đồ trực quan của hệ thống" class="visual-index">
+<h2>Bản đồ hệ thống — đọc 30 giây trước khi đi vào 40 phần</h2>
+<p>Luồng chính của dự án có thể hiểu như một chuỗi: sự kiện ngân hàng → trạng thái/feature → graph model → risk → evidence/case → AI investigation → analyst/governance.</p>
+<div class="system-map">
+<div class="map-node">Banking Events<small>AusAML / AMLSim / stream</small></div>
+<div class="map-node">Kafka + Validation<small>schema, quarantine</small></div>
+<div class="map-node">Features + Graph State<small>Feast / Redis / temporal state</small></div>
+<div class="map-node">Hybrid ML<small>TGN memory + HGT attention</small></div>
+<div class="map-node">Risk + Evidence<small>fusion, typology, subgraph</small></div>
+<div class="map-node">Case + AI Agent<small>grounded investigation</small></div>
+<div class="map-node">Analyst + Governance<small>feedback, drift, lifecycle</small></div>
+</div>
+<div class="visual-links">
+<a href="#7-banking-graph-ontology">Graph ontology</a><a href="#10-temporal-graph-model">Hybrid model</a><a href="#11-risk-fusion">Risk fusion</a><a href="#15-online-streaming-architecture">Streaming</a><a href="#18-ai-investigation-agent">AI Investigator</a><a href="#24-model-lifecycle">Model lifecycle</a><a href="#29-service-boundaries">Services</a><a href="#37-acceptance-criteria-definition-of-done">End-to-end acceptance</a>
+</div>
+</section>
+<div class="note"><span class="diagram-count">V2 bổ sung 14 visual model/diagram</span> · <b>Gợi ý đọc nhanh:</b> dùng ô tìm kiếm bên trái để lọc theo từ khóa như <code>TGN</code>, <code>Kafka</code>, <code>AI Investigation Agent</code>, <code>Testing</code>, <code>Acceptance Criteria</code>. Có thể thu gọn từng phần hoặc toàn bộ tài liệu.</div>
+<div class="article-content"><h1>Financial Crime Intelligence Platform — Đặc tả Thiết kế</h1><p><strong>Ngày:</strong> 2026-08-27<br/>
+<strong>Trạng thái:</strong> Thiết kế đã được phê duyệt / sẵn sàng cho giai đoạn lập kế hoạch triển khai<br/>
+<strong>Loại dự án:</strong> Nền tảng phát hiện AML cấp độ nghiên cứu + nền tảng điều tra AI cấp độ production<br/>
+<strong>Lĩnh vực chính:</strong> Chống rửa tiền (Anti-Money Laundering — AML) trong ngân hàng tiền pháp định (fiat banking)<br/>
+<strong>Tên repository chính:</strong> <code>financial-crime-intelligence-platform</code></p><blockquote>
+<p><strong>Cách đọc bản tiếng Việt:</strong> Nội dung bên dưới giữ nguyên cấu trúc và yêu cầu kỹ thuật của spec gốc. Các thuật ngữ quan trọng như TGN, HGT, risk fusion, holdout, drift, evidence... được giữ bằng tiếng Anh khi cần để thuận tiện đối chiếu code và tài liệu kỹ thuật.</p>
+</blockquote><hr/><section class="doc-section" data-section="1. tóm tắt điều hành"><div class="section-heading"><h2 id="1-tom-tat-dieu-hanh">1. Tóm tắt điều hành</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Financial Crime Intelligence Platform là một hệ thống nghiên cứu và điều tra AML end-to-end cho ngân hàng tiền pháp định. Hệ thống được thiết kế để phát hiện <strong>tài khoản đáng ngờ</strong> và <strong>các đồ thị con giao dịch đáng ngờ (suspicious transaction subgraphs)</strong>, thay vì chỉ phân loại từng giao dịch riêng lẻ.</p><p>Hệ thống kết hợp:</p><ul>
+<li>học trên đồ thị dị thể theo thời gian (temporal heterogeneous graph learning),</li>
+<li>nhận diện các kiểu hành vi AML đã biết bằng supervised learning,</li>
+<li>phát hiện bất thường trên graph và hành vi bằng unsupervised learning,</li>
+<li>hợp nhất rủi ro từ nhiều mô hình đã được hiệu chỉnh (calibrated multi-model risk fusion),</li>
+<li>chấm điểm giao dịch theo thời gian thực,</li>
+<li>khám phá suspicious subgraph,</li>
+<li>giải thích dựa trên bằng chứng,</li>
+<li>AI investigation agent,</li>
+<li>phản hồi của analyst và case disposition,</li>
+<li>giám sát drift và quản trị vòng đời model có human gate,</li>
+<li>adversarial stress testing bằng các mô phỏng AML tổng hợp.</li>
+</ul><p>Dự án chủ động tái sử dụng các thành phần open-source trưởng thành và dataset công khai khi chúng đã đủ tốt, đồng thời tập trung phần custom engineering vào các ranh giới hệ thống và đóng góp nghiên cứu tạo nên giá trị khác biệt.</p><p>Nguyên tắc định hướng:</p><blockquote>
+<p>Tái sử dụng hạ tầng phổ biến và baseline algorithms; tự xây dựng representation graph ngân hàng theo thời gian, AML risk fusion, novelty detection, investigation workflow, evidence model và evaluation framework.</p>
+</blockquote><hr/></div></section><section class="doc-section" data-section="2. mục tiêu dự án"><div class="section-heading"><h2 id="2-muc-tieu-du-an">2. Mục tiêu dự án</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="2-1-muc-tieu-chinh">2.1 Mục tiêu chính</h3><p>Nền tảng phải:</p><ol>
+<li>Phát hiện các tài khoản/entity rủi ro cao từ dòng sự kiện ngân hàng đến liên tục.</li>
+<li>Phát hiện các nhóm, đường đi, vòng (ring) và transaction subgraph đáng ngờ.</li>
+<li>Nhận diện các AML typology đã biết.</li>
+<li>Phát hiện những hành vi AML chưa từng thấy hoặc bị cố ý giữ lại khỏi training như các bất thường.</li>
+<li>Tạo bằng chứng giải thích tại sao một case được tạo.</li>
+<li>Hỗ trợ chấm điểm giao dịch gần thời gian thực từ Kafka events.</li>
+<li>Cung cấp giao diện điều tra cho analyst xoay quanh case, entity, timeline, graph evidence và AI-assisted investigation.</li>
+<li>Lưu đủ provenance để có thể tái dựng lý do một quyết định của model được đưa ra.</li>
+<li>Hỗ trợ các offline experiment có thể tái lập, chronological holdout evaluation, ablation study, adversarial AML stress test và latency benchmark.</li>
+<li>Dùng analyst feedback cho evaluation và training tương lai nhưng <strong>không</strong> trực tiếp tự động cập nhật production model.</li>
+</ol><h3 id="2-2-muc-tieu-phu">2.2 Mục tiêu phụ</h3><p>Nền tảng nên:</p><ul>
+<li>giúp dễ dàng so sánh classical, graph và temporal models;</li>
+<li>thể hiện thực hành MLOps và model governance mạnh;</li>
+<li>cung cấp telemetry rõ ràng cho system health, model health và AML operations;</li>
+<li>cho phép chạy end-to-end cục bộ bằng Docker Compose;</li>
+<li>đủ modular để thay thế từng ML component mà không phải viết lại toàn bộ sản phẩm.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="3. những thứ không thuộc phạm vi v1"><div class="section-heading"><h2 id="3-nhung-thu-khong-thuoc-pham-vi-v1">3. Những thứ không thuộc phạm vi V1</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Các nội dung sau nằm ngoài scope V1:</p><ul>
+<li>cryptocurrency AML,</li>
+<li>federated learning,</li>
+<li>blockchain analysis,</li>
+<li>tự động đóng băng tài khoản,</li>
+<li>tự động nộp regulatory report,</li>
+<li>tự động hoàn toàn việc promotion model lên production,</li>
+<li>vận hành Kubernetes production,</li>
+<li>tự xây graph database,</li>
+<li>training foundation model,</li>
+<li>tự implement hàng chục anomaly algorithm từ đầu,</li>
+<li>xây enterprise IAM platform,</li>
+<li>bịa thêm banking entities mà dữ liệu nguồn không hỗ trợ.</li>
+</ul><p>Kubernetes manifests có thể tồn tại như ví dụ deployment tùy chọn, nhưng <strong>Docker Compose</strong> là môi trường hỗ trợ chính.</p><hr/></div></section><section class="doc-section" data-section="4. định nghĩa bài toán cốt lõi"><div class="section-heading"><h2 id="4-dinh-nghia-bai-toan-cot-loi">4. Định nghĩa bài toán cốt lõi</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Hai đối tượng mà hệ thống thực sự chấm điểm</div><div class="viz-sub">Không chỉ hỏi “giao dịch này có xấu không?”, mà liên tục đánh giá entity và cấu trúc giao dịch liên kết.</div></div><span class="viz-tag">DIAGRAM</span></div><div class="vgrid"><div class="vcard"><h4>① Entity Risk</h4><p>Risk được cập nhật liên tục cho <strong>Account / Customer / entity hợp lệ</strong> dựa trên lịch sử, graph state và event mới.</p></div><div class="vcard"><h4>② Suspicious Subgraph Risk</h4><p>Chấm điểm cho <strong>path / ring / group / network</strong> có khả năng thể hiện hành vi phối hợp rửa tiền.</p></div></div><div class="flow" style="margin-top:10px"><div class="fnode c1">Transaction Event<small>amount • time • channel</small></div><div class="fnode c3">Update Entity State<small>behavior + temporal memory</small></div><div class="fnode c2">Update Graph Context<small>neighbors • paths • rings</small></div><div class="fnode c6">Risk Outputs<small>entity + subgraph</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><p>Hệ thống <strong>không</strong> chủ yếu là một transaction-level binary classifier.</p><h3 id="4-1-doi-tuong-cham-diem-chinh">4.1 Đối tượng chấm điểm chính</h3><p>Hai đối tượng cốt lõi là:</p><ol>
+<li><strong>Entity risk</strong> — risk score được cập nhật liên tục cho account và các banking entity hợp lệ khác.</li>
+<li><strong>Suspicious subgraph risk</strong> — điểm rủi ro cho một nhóm liên kết, path, ring hoặc network của entity và transaction có thể phản ánh hành vi tội phạm tài chính phối hợp.</li>
+</ol><p>Một transaction được coi là một event có timestamp và là nguồn evidence để cập nhật một hoặc nhiều entity states, đồng thời có thể đóng góp vào suspicious subgraph.</p><h3 id="4-2-cac-aml-typology-cot-loi">4.2 Các AML typology cốt lõi</h3><p>V1 phải hỗ trợ các typology đã biết sau:</p><ul>
+<li>rapid pass-through,</li>
+<li>fan-in,</li>
+<li>fan-out,</li>
+<li>circular transactions,</li>
+<li>structuring,</li>
+<li>smurfing,</li>
+<li>layering,</li>
+<li>multi-hop routing,</li>
+<li>mule collection.</li>
+</ul><p>Để phục vụ investigation và reporting, typology được nhóm theo phân cấp:</p><ul>
+<li><strong>Flow</strong>: fan-in, fan-out, rapid pass-through</li>
+<li><strong>Obfuscation</strong>: layering, circular flow, multi-hop routing</li>
+<li><strong>Structuring</strong>: structuring, smurfing</li>
+<li><strong>Mule activity</strong>: mule collection</li>
+</ul><hr/></div></section><section class="doc-section" data-section="5. chiến lược dataset"><div class="section-heading"><h2 id="5-chien-luoc-dataset">5. Chiến lược dataset</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Dataset strategy: dataset chính và dataset stress-test có vai trò khác nhau</div><div class="viz-sub">AusAML/AMLBench là population chính cho train/evaluation; AMLSim là máy tạo kịch bản đối kháng có kiểm soát — không trộn ngây thơ thành một population.</div></div><span class="viz-tag">DIAGRAM</span></div><div class="branch"><div class="vcard"><h4>AusAML / AMLBench</h4><p><strong>Train • calibration • validation • holdout</strong><br/>Graph/temporal experiments, model comparison, ablation, known typologies.</p></div><div class="center">≠</div><div class="vcard"><h4>IBM AMLSim</h4><p><strong>Adversarial stress scenarios</strong><br/>Slow laundering, smaller amounts, more hops, larger rings, topology mutation, held-out patterns.</p></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="5-1-dataset-chinh-ausaml-amlbench">5.1 Dataset chính: AusAML / AMLBench</h3><p>AusAML là dataset chính cho training, validation và evaluation.</p><p>Dataset này được dùng cho:</p><ul>
+<li>model training,</li>
+<li>strict chronological validation,</li>
+<li>strict chronological holdout testing,</li>
+<li>experiment về graph và temporal representation,</li>
+<li>đánh giá known typology,</li>
+<li>ablation study,</li>
+<li>model comparison.</li>
+</ul><p>Không được trộn AusAML với output AMLSim một cách ngây thơ thành một training population duy nhất vì hai nguồn có generative distribution khác nhau.</p><h3 id="5-2-synthetic-stress-dataset-ibm-amlsim">5.2 Synthetic stress dataset: IBM AMLSim</h3><p>AMLSim được dùng như một bộ tạo adversarial scenario có thể kiểm soát, <strong>không</strong> phải training corpus chính.</p><p>Nó phải hỗ trợ các stress scenario như:</p><ul>
+<li>rửa tiền chậm hơn,</li>
+<li>số tiền giao dịch nhỏ hơn,</li>
+<li>thêm nhiều laundering hop,</li>
+<li>mule ring lớn hơn,</li>
+<li>thay đổi graph topology,</li>
+<li>cash-out bị trì hoãn,</li>
+<li>transaction pattern có velocity thấp hơn,</li>
+<li>perturb amount nhưng giữ topology,</li>
+<li>perturb routing làm thay đổi topology,</li>
+<li>các suspicious pattern cố ý novel/held-out.</li>
+</ul><p>AMLSim stress test được dùng để đo robustness của model và mức suy giảm hiệu năng khi hành vi rửa tiền thay đổi.</p><h3 id="5-3-chinh-sach-tach-du-lieu">5.3 Chính sách tách dữ liệu</h3><p>Các tập train, calibration, validation, stress và holdout phải có provenance rõ ràng và không được âm thầm overlap.</p><p>Mọi logic chọn model phải tránh <strong>holdout leakage</strong>.</p><hr/></div></section><section class="doc-section" data-section="6. chính sách đánh giá theo thời gian"><div class="section-heading"><h2 id="6-chinh-sach-danh-gia-theo-thoi-gian">6. Chính sách đánh giá theo thời gian</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Chronological split — giữ tính causal và chống leakage</div><div class="viz-sub">Tương lai không được “rò” vào feature/embedding dùng để chấm điểm quá khứ.</div></div><span class="viz-tag">DIAGRAM</span></div><div class="splitbar"><div class="train">TRAIN<br/><small>Khoảng thời gian sớm nhất</small></div><div class="cal">CALIBRATION / MODEL SELECTION<br/><small>Ngay sau train</small></div><div class="hold">HOLDOUT<br/><small>Mới nhất • untouched</small></div></div><div class="timeline-note">time →    quá khứ ────────────────────────────────────────────── tương lai</div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><p>Không được dùng random train/test split làm headline evaluation nếu nó tạo ra temporal leakage hoặc graph leakage.</p><p>Mặc định phải chia dữ liệu theo thời gian:</p><ul>
+<li><strong>Train</strong>: khoảng thời gian sớm nhất</li>
+<li><strong>Calibration / model selection</strong>: khoảng thời gian ngay sau train</li>
+<li><strong>Holdout</strong>: khoảng thời gian mới nhất và hoàn toàn chưa bị chạm tới</li>
+</ul><p>Ngày hoặc step cụ thể phụ thuộc dataset, nhưng thứ tự này là bắt buộc.</p><p>Khi graph connectivity đi qua ranh giới các split, preprocessing phải giữ tính causal: future event không được ảnh hưởng feature hoặc embedding dùng để score event trước đó.</p><hr/></div></section><section class="doc-section" data-section="7. banking graph ontology"><div class="section-heading"><h2 id="7-banking-graph-ontology">7. Banking Graph Ontology</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Banking heterogeneous graph ontology</div><div class="viz-sub">Các node có loại khác nhau và transaction là một temporal interaction nối các account/entity trong bối cảnh ngân hàng.</div></div><span class="viz-tag">GRAPH</span></div><div class="graph-wrap"><svg aria-label="Banking graph ontology" role="img" viewbox="0 0 820 310">
+<line class="graph-edge" x1="130" x2="300" y1="80" y2="80"></line><text class="graph-label" x="210" y="66">OWNS</text>
+<line class="graph-edge" x1="300" x2="490" y1="80" y2="80"></line><text class="graph-label" x="380" y="66">SENDS</text>
+<line class="graph-edge" x1="490" x2="680" y1="80" y2="80"></line><text class="graph-label" x="570" y="66">RECEIVED_BY</text>
+<line class="graph-edge" x1="300" x2="300" y1="80" y2="220"></line><text class="graph-label" x="310" y="157">USES</text>
+<line class="graph-edge" x1="300" x2="120" y1="80" y2="220"></line><text class="graph-label" x="185" y="155">HELD_AT</text>
+<line class="graph-edge" x1="120" x2="120" y1="220" y2="285"></line><text class="graph-label" x="132" y="258">HAS_BRANCH</text>
+<line class="graph-edge" x1="490" x2="500" y1="80" y2="220"></line><text class="graph-label" x="510" y="157">AT_MERCHANT</text>
+<circle class="graph-node n1" cx="130" cy="80" r="48"></circle><text class="graph-text" x="130" y="76">Customer</text><text class="graph-sub" x="130" y="96">entity</text>
+<circle class="graph-node n2" cx="300" cy="80" r="50"></circle><text class="graph-text" x="300" y="76">Account A</text><text class="graph-sub" x="300" y="96">temporal state</text>
+<circle class="graph-node n6" cx="490" cy="80" r="48"></circle><text class="graph-text" x="490" y="76">Transaction</text><text class="graph-sub" x="490" y="96">event</text>
+<circle class="graph-node n2" cx="680" cy="80" r="50"></circle><text class="graph-text" x="680" y="76">Account B</text><text class="graph-sub" x="680" y="96">temporal state</text>
+<circle class="graph-node n3" cx="300" cy="220" r="43"></circle><text class="graph-text" x="300" y="216">Device</text><text class="graph-sub" x="300" y="235">context</text>
+<circle class="graph-node n4" cx="120" cy="220" r="43"></circle><text class="graph-text" x="120" y="216">Bank</text><text class="graph-sub" x="120" y="235">institution</text>
+<circle class="graph-node n5" cx="120" cy="285" r="23"></circle><text class="graph-text" style="font-size:8px" x="120" y="285">Branch</text>
+<circle class="graph-node n5" cx="500" cy="220" r="43"></circle><text class="graph-text" x="500" y="216">Merchant</text><text class="graph-sub" x="500" y="235">context</text>
+</svg></div><div class="viz-note" style="border-top:0;margin-top:7px;padding-top:0"><code>Account_A -[TRANSFER(amount, time, channel, ...)]→ Account_B</code> là cách nhìn event-based cốt lõi cho temporal graph.</div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="7-1-cac-loai-node-cot-loi">7.1 Các loại node cốt lõi</h3><p>Heterogeneous graph cốt lõi gồm:</p><ul>
+<li><code>Customer</code></li>
+<li><code>Account</code></li>
+<li><code>Transaction</code></li>
+<li><code>Merchant</code></li>
+<li><code>Device</code></li>
+<li><code>Bank</code></li>
+<li><code>Branch</code></li>
+</ul><p>Các node type tùy chọn chỉ được bật khi source data hỗ trợ đáng tin cậy:</p><ul>
+<li><code>IP</code></li>
+<li><code>Address</code></li>
+<li><code>Phone</code></li>
+<li><code>Country</code></li>
+<li><code>Beneficiary</code></li>
+</ul><p>Hệ thống không được bịa entity tùy chọn chỉ để làm graph phức tạp hơn.</p><h3 id="7-2-cac-loai-edge-relationship-cot-loi">7.2 Các loại edge/relationship cốt lõi</h3><p>Ví dụ:</p><ul>
+<li><code>Customer -[OWNS]-&gt; Account</code></li>
+<li><code>Account -[USES]-&gt; Device</code></li>
+<li><code>Account -[HELD_AT]-&gt; Bank</code></li>
+<li><code>Bank -[HAS_BRANCH]-&gt; Branch</code></li>
+<li><code>Account -[SENDS]-&gt; Transaction</code></li>
+<li><code>Transaction -[RECEIVED_BY]-&gt; Account</code></li>
+<li><code>Transaction -[AT_MERCHANT]-&gt; Merchant</code></li>
+</ul><p>Đối với temporal graph modeling, financial event cốt lõi cũng có thể được biểu diễn như một tương tác có hướng theo thời gian:</p><p><code>Account_A -[TRANSFER(amount, time, channel, ...)] -&gt; Account_B</code></p><h3 id="7-3-yeu-cau-doi-voi-graph-representation">7.3 Yêu cầu đối với graph representation</h3><p>Graph representation cho ML phải:</p><ul>
+<li>heterogeneous,</li>
+<li>temporal,</li>
+<li>được xây causal,</li>
+<li>tương thích với PyTorch Geometric hoặc reusable graph-learning framework tương đương,</li>
+<li>có thể serialize và tái dựng từ source event cùng schema version.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="8. feature system"><div class="section-heading"><h2 id="8-feature-system">8. Feature System</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Feature system và yêu cầu offline/online parity</div><div class="viz-sub">Một định nghĩa feature phải phục vụ được cả training lịch sử và scoring online, tránh training-serving skew.</div></div><span class="viz-tag">DIAGRAM</span></div><div class="vgrid cols4"><div class="vcard"><h4>Transaction</h4><p>amount, channel, type, timestamp...</p></div><div class="vcard"><h4>Behavioral</h4><p>velocity, pass-through, new counterparty...</p></div><div class="vcard"><h4>Graph</h4><p>degree, fan-in/out, cycle, density, motifs...</p></div><div class="vcard"><h4>Device / Context</h4><p>novelty, switching, location, merchant...</p></div></div><div class="flow" style="margin-top:10px"><div class="fnode c1">Common Feature Definitions<small>Feast abstraction</small></div><div class="fnode c4">Offline Store<small>Parquet / warehouse</small></div><div class="fnode c3">Online Store<small>Redis</small></div><div class="fnode c6">Scoring<small>same semantics</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="8-1-cac-nhom-feature">8.1 Các nhóm feature</h3><p>Hệ thống nên tính feature từ bốn nhóm.</p><h4>Transaction features</h4><ul>
+<li>amount,</li>
+<li>amount đã normalize theo currency khi cần,</li>
+<li>channel,</li>
+<li>merchant/category context,</li>
+<li>transaction type,</li>
+<li>timestamp encoding.</li>
+</ul><h4>Behavioral features</h4><p>Ví dụ:</p><ul>
+<li><code>txn_count_5m</code></li>
+<li><code>txn_count_1h</code></li>
+<li><code>txn_count_24h</code></li>
+<li><code>incoming_amount_30m</code></li>
+<li><code>outgoing_amount_30m</code></li>
+<li><code>new_counterparty_ratio</code></li>
+<li><code>pass_through_ratio</code></li>
+<li><code>time_since_last_txn</code></li>
+<li>độ lệch hành vi so với trailing history.</li>
+</ul><h4>Graph features</h4><p>Ví dụ:</p><ul>
+<li>temporal in-degree,</li>
+<li>temporal out-degree,</li>
+<li>số unique counterparty,</li>
+<li>fan-in score,</li>
+<li>fan-out score,</li>
+<li>cycle score,</li>
+<li>path length statistics,</li>
+<li>suspicious-neighbor ratio,</li>
+<li>local density,</li>
+<li>motif counts khi chi phí tính toán phù hợp.</li>
+</ul><h4>Device/context features</h4><p>Khi dữ liệu hỗ trợ:</p><ul>
+<li>device novelty,</li>
+<li>device switching rate,</li>
+<li>location change,</li>
+<li>merchant novelty,</li>
+<li>channel novelty.</li>
+</ul><h3 id="8-2-feature-store">8.2 Feature store</h3><p><strong>Feast là feature-store abstraction của V1.</strong> Redis là online store; historical feature offline được materialize dựa trên Parquet/warehouse data.</p><p>Thiết kế kỳ vọng:</p><ul>
+<li>offline store: historical feature dựa trên Parquet/warehouse,</li>
+<li>online store: Redis hoặc low-latency key-value store tương đương,</li>
+<li>common feature definitions được chia sẻ giữa offline và online computation.</li>
+</ul><p>Offline/online feature parity là yêu cầu bắt buộc đối với các feature dùng trong online scoring.</p><hr/></div></section><section class="doc-section" data-section="9. chiến lược model"><div class="section-heading"><h2 id="9-chien-luoc-model">9. Chiến lược model</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Baseline ladder — tăng dần độ biểu đạt, không nhảy thẳng vào model phức tạp</div><div class="viz-sub">Mục tiêu research là chứng minh hybrid model có giá trị hơn các baseline hợp lý.</div></div><span class="viz-tag">DIAGRAM</span></div><div class="flow"><div class="fnode c1">Rules<small>heuristics</small></div><div class="fnode c1">Tabular<small>statistical</small></div><div class="fnode c3">Anomaly<small>IF / AE / PyGOD</small></div><div class="fnode c2">Static GNN<small>GraphSAGE / GAT</small></div><div class="fnode c2">HGT<small>heterogeneous</small></div><div class="fnode c5">TGN<small>temporal</small></div><div class="fnode c6">Hybrid<small>TGN + HGT + heads</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="9-1-baseline-ladder">9.1 Baseline ladder</h3><p>Nền tảng phải benchmark theo lộ trình từ model đơn giản đến model biểu đạt mạnh hơn:</p><ol>
+<li>deterministic AML rules/heuristics,</li>
+<li>tabular statistical models,</li>
+<li>Isolation Forest và/hoặc tabular Autoencoder,</li>
+<li>strong supervised tabular baseline như LightGBM/XGBoost,</li>
+<li>PyGOD graph outlier detector như DOMINANT, CoLA, CONAD, GADNR hoặc candidate phù hợp khác,</li>
+<li>static graph model như GraphSAGE và GAT,</li>
+<li>heterogeneous graph model như HGT,</li>
+<li>Temporal Graph Network (TGN)-style model,</li>
+<li>hybrid temporal heterogeneous AML model của dự án.</li>
+</ol><p>Không phải baseline nào cũng cần deploy online. Baseline chủ yếu dùng cho research comparison.</p><h3 id="9-2-muc-tieu-hybrid-modeling">9.2 Mục tiêu hybrid modeling</h3><p>Đóng góp nghiên cứu V1 <strong>không</strong> phải phát minh một GNN primitive mới từ đầu.</p><p>Đóng góp custom là tích hợp và mở rộng reusable graph/temporal backbone thành kiến trúc riêng cho ngân hàng, kết hợp:</p><ul>
+<li>temporal banking graph representation,</li>
+<li>heterogeneous entity encoding,</li>
+<li>supervised AML risk prediction,</li>
+<li>unsupervised novelty detection,</li>
+<li>typology prediction,</li>
+<li>suspicious-subgraph discovery,</li>
+<li>calibrated risk fusion.</li>
+</ul><h3 id="9-3-supervised-va-unsupervised-heads">9.3 Supervised và unsupervised heads</h3><p>Model stack phải có cả:</p><ul>
+<li><strong>supervised heads</strong> cho AML label/typology đã biết,</li>
+<li><strong>unsupervised hoặc self-supervised anomaly heads</strong> cho novelty detection.</li>
+</ul><p>Hệ thống phải có khả năng đưa ra anomaly risk cao cho một suspicious pattern bị held-out, ngay cả khi supervised typology classifier chưa từng nhìn thấy pattern đó trong training.</p><hr/></div></section><section class="doc-section" data-section="10. temporal graph model"><div class="section-heading"><h2 id="10-temporal-graph-model">10. Temporal Graph Model</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Hybrid model V1: typed TGN memory + relation-aware HGT temporal attention</div><div class="viz-sub">Transaction đi vào như một event; memory giữ trạng thái theo thời gian, HGT-style attention lấy context từ temporal neighbors hợp lệ theo causal.</div></div><span class="viz-tag">MODEL</span></div><div class="model-stack"><div class="stack-col"><div class="stack-box">Raw typed attributes<br/><small>Account • Device • Merchant...</small></div><div class="stack-box">Type-specific encoders</div><div class="stack-box">Typed temporal message<br/><small>src/dst type • relation • txn • time</small></div></div><div class="stack-mid"><b>→</b><span>TGN recurrent memory<br/>+<br/>HGT relation-aware attention</span><b>→</b></div><div class="stack-col"><div class="stack-box" style="border-top:3px solid var(--viz6)">Supervised AML head</div><div class="stack-box" style="border-top:3px solid var(--viz3)">Novelty / anomaly head</div><div class="stack-box" style="border-top:3px solid var(--viz5)">Typology head</div></div></div><div class="flow" style="margin-top:10px"><div class="fnode c1">Event Encoding</div><div class="fnode c3">Memory Update</div><div class="fnode c2">Temporal Neighbor Attention</div><div class="fnode c4">Entity Embedding</div><div class="fnode c6">Risk Heads</div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="10-1-event-based-modeling">10.1 Event-based modeling</h3><p>Kiến trúc temporal chính hoạt động theo event, lấy cảm hứng từ TGN-style continuous-time graph learning.</p><p>Một transaction event sẽ kích hoạt:</p><ol>
+<li>event encoding,</li>
+<li>tạo temporal message,</li>
+<li>cập nhật entity memory/state,</li>
+<li>temporal neighborhood aggregation,</li>
+<li>cập nhật entity embeddings,</li>
+<li>chạy một hoặc nhiều risk heads.</li>
+</ol><p>Snapshot-based temporal graph chỉ được dùng làm offline research baseline, không phải kiến trúc online chính.</p><h3 id="10-2-heterogeneous-integration">10.2 Heterogeneous integration</h3><p>Hybrid model V1 sử dụng một kiến trúc cụ thể: <strong>typed TGN memory + relation-aware HGT-style temporal neighborhood attention</strong>.</p><p>Với mỗi node type được hỗ trợ, raw attributes được chiếu vào shared embedding space bằng type-specific encoder. Mỗi transaction tạo một typed temporal message chứa source/destination entity type, relation type, transaction attributes và time encoding. Entity memory được cập nhật bằng TGN-style recurrent memory updater. Khi scoring, current entity memory được kết hợp với một tập temporal neighbors hữu hạn và causal-valid bằng relation-aware multi-head attention lấy cảm hứng từ HGT.</p><p>Entity representation cuối cùng được đưa vào supervised AML head, novelty/anomaly head và typology head. Đây là hybrid architecture chính của dự án; GraphSAGE, GAT, HGT-only và TGN-only vẫn là comparison baseline.</p><hr/></div></section><section class="doc-section" data-section="11. risk fusion"><div class="section-heading"><h2 id="11-risk-fusion">11. Risk Fusion</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Risk fusion — gom nhiều tín hiệu thành một risk score có calibration và governance</div><div class="viz-sub">Weights chỉ được chọn trên calibration split; holdout không được dùng để chọn calibration, weight hoặc threshold.</div></div><span class="viz-tag">FUSION</span></div><div class="fusion"><div class="fusion-inputs"><div class="fusion-pill">Behavior anomaly</div><div class="fusion-pill">Graph anomaly</div><div class="fusion-pill">Temporal anomaly</div><div class="fusion-pill">Supervised AML</div><div class="fusion-pill">Typology confidence</div><div class="fusion-pill">Rule evidence</div></div><div class="fusion-core">Calibrate<br/>+<br/>Weighted Fusion</div><div class="fusion-output"><b>Final Risk</b>non-negative weights<br/>Σ weights = 1<br/><small>benchmark vs learned meta-model</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="11-1-dau-vao-cua-risk-fusion">11.1 Đầu vào của risk fusion</h3><p>Risk fusion có thể kết hợp:</p><ul>
+<li>behavioral anomaly score,</li>
+<li>graph anomaly score,</li>
+<li>temporal anomaly score,</li>
+<li>supervised AML probability,</li>
+<li>typology-specific confidence,</li>
+<li>deterministic rule evidence.</li>
+</ul><h3 id="11-2-chien-luoc-fusion-cua-v1">11.2 Chiến lược fusion của V1</h3><p>Cách tiếp cận chính ở V1 là <strong>calibrated weighted fusion</strong>. Mỗi component score được calibrate trên calibration split bằng Platt scaling cho probabilistic supervised output và isotonic calibration khi non-parametric monotonic calibration cho kết quả thực nghiệm tốt hơn. Anomaly score được biến đổi thành calibrated risk percentile/probability bằng reference distribution chỉ lấy từ calibration data.</p><p>Fusion weight phải không âm và tổng bằng 1. Weight chỉ được chọn trên calibration split bằng objective được ghi rõ, ưu tiên PR-AUC/precision-at-K đồng thời tuân thủ alert-volume guardrail. <strong>Holdout data tuyệt đối không được dùng</strong> để chọn calibration function, weight hoặc threshold.</p><p>Cách này phải được benchmark với ít nhất một learned meta-model, ví dụ:</p><ul>
+<li>logistic regression,</li>
+<li>gradient-boosted model,</li>
+<li>small MLP.</li>
+</ul><p>Nếu learned fusion không mang lại holdout gain đáng kể, calibrated deterministic fusion vẫn là lựa chọn production ưu tiên vì dễ giải thích và quản trị hơn.</p><hr/></div></section><section class="doc-section" data-section="12. khám phá suspicious subgraph"><div class="section-heading"><h2 id="12-kham-pha-suspicious-subgraph">12. Khám phá suspicious subgraph</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Nền tảng phải hỗ trợ khám phá và chấm điểm suspicious neighborhood, path, ring hoặc connected transaction group.</p><p>Subgraph discovery có thể kết hợp:</p><ul>
+<li>high-risk entity sau threshold,</li>
+<li>graph neighborhood expansion,</li>
+<li>traversal pattern theo typology,</li>
+<li>temporal window,</li>
+<li>cycle/path analysis,</li>
+<li>community/ring heuristic,</li>
+<li>learned node/edge score.</li>
+</ul><p>Implementation phải tránh graph expansion không giới hạn. Query depth, time window, node limit và evidence limit phải được quy định rõ.</p><hr/></div></section><section class="doc-section" data-section="13. thí nghiệm unknown-typology"><div class="section-heading"><h2 id="13-thi-nghiem-unknown-typology">13. Thí nghiệm Unknown-Typology</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Đây là một flagship research experiment và là yêu cầu bắt buộc.</p><h3 id="13-1-protocol">13.1 Protocol</h3><p>Ít nhất một suspicious typology hoặc scenario family phải bị cố ý loại khỏi supervised training.</p><p>Model được đánh giá xem anomaly/novelty component có còn phát hiện được hành vi chưa từng thấy đó hay không.</p><h3 id="13-2-vi-du">13.2 Ví dụ</h3><p>Nếu circular laundering bị giữ khỏi supervised training:</p><ul>
+<li>supervised circular-flow head không có training signal cho class đó,</li>
+<li>temporal/graph novelty component vẫn phải tăng anomaly risk cho circular flow,</li>
+<li>hệ thống không được gán một known typology label nếu evidence không đủ hỗ trợ.</li>
+</ul><h3 id="13-3-metrics">13.3 Metrics</h3><p>Cần report:</p><ul>
+<li>unseen-pattern detection rate,</li>
+<li>precision của novelty alert,</li>
+<li>ranking position của unseen-pattern case,</li>
+<li>ảnh hưởng đến alert volume,</li>
+<li>so sánh với supervised-only model.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="14. adversarial amlsim stress testing"><div class="section-heading"><h2 id="14-adversarial-amlsim-stress-testing">14. Adversarial AMLSim Stress Testing</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>AMLSim phải được dùng để sinh các biến thể laundering có kiểm soát.</p><p>Các stress dimension gồm:</p><ul>
+<li>giảm transfer size,</li>
+<li>giảm velocity,</li>
+<li>tăng/giảm hop count,</li>
+<li>tăng ring size,</li>
+<li>mutation routing topology,</li>
+<li>delayed cash-out,</li>
+<li>chia amount qua nhiều account hơn,</li>
+<li>gộp flow vào ít collector hơn.</li>
+</ul><p>Hệ thống phải đo mức suy giảm performance theo độ khó của scenario.</p><p>Research output bắt buộc phải có plot hoặc table tương đương:</p><p><code>Detection Rate vs. Adversary Difficulty</code>.</p><hr/></div></section><section class="doc-section" data-section="15. kiến trúc online streaming"><div class="section-heading"><h2 id="15-kien-truc-online-streaming">15. Kiến trúc Online Streaming</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="15-1-luong-event-chinh">15.1 Luồng event chính</h3><p>Kafka là event backbone. V1 dùng kiến trúc Python consumer/service chuyên biệt thay vì Spark/Flink trên scoring hot path; Spark chỉ có thể dùng cho offline/batch experiment nếu hữu ích.</p><p>Online path:</p><ol>
+<li>banking transaction/event source,</li>
+<li>Kafka,</li>
+<li>schema validation,</li>
+<li>quarantine invalid event,</li>
+<li>online feature computation/lookup,</li>
+<li>temporal graph-state update,</li>
+<li>model inference,</li>
+<li>risk fusion,</li>
+<li>tạo evidence package,</li>
+<li>tạo alert/case,</li>
+<li>asynchronous persistence vào investigation store.</li>
+</ol><h3 id="15-2-rang-buoc-hot-path">15.2 Ràng buộc hot path</h3><p>Hot path không được phụ thuộc vào Neo4j traversal đắt đỏ.</p><p>Near-real-time scoring dùng dedicated online feature/state component.</p><h3 id="15-3-muc-tieu-latency">15.3 Mục tiêu latency</h3><p>Target:</p><ul>
+<li>p95 incremental scoring latency &lt; <strong>500 ms</strong> dưới benchmark workload được dự án mô tả.</li>
+</ul><p>Target này không bao gồm offline training và full graph reconstruction.</p><hr/></div></section><section class="doc-section" data-section="16. trách nhiệm của graph state và neo4j"><div class="section-heading"><h2 id="16-trach-nhiem-cua-graph-state-va-neo4j">16. Trách nhiệm của Graph State và Neo4j</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="16-1-training-graph">16.1 Training graph</h3><p>PyTorch Geometric hoặc tương đương là representation chính cho model training và offline graph ML.</p><h3 id="16-2-online-temporal-state">16.2 Online temporal state</h3><p>Một graph-state service chuyên biệt sở hữu bounded incremental temporal state. Redis là durable online state backend cho entity feature/state record và replay checkpoint. Graph-state service có thể giữ bounded in-process cache cho hot entity memory, nhưng Redis là recovery source cho online state và checkpoint metadata. Model-specific large tensor checkpoint được version trong MinIO/MLflow artifact thay vì lưu thành unbounded Redis value.</p><p>Kafka partition ordering cùng stable entity/event ID được dùng để update đủ deterministic cho replay. State update phải idempotent theo event ID.</p><h3 id="16-3-neo4j">16.3 Neo4j</h3><p>Neo4j là investigation/query store, <strong>không</strong> phải scoring hot path bắt buộc.</p><p>Neo4j được dùng cho:</p><ul>
+<li>path query,</li>
+<li>suspicious-neighbor discovery,</li>
+<li>ring visualization,</li>
+<li>analyst graph exploration,</li>
+<li>evidence retrieval,</li>
+<li>case investigation.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="17. evidence model"><div class="section-heading"><h2 id="17-evidence-model">17. Evidence Model</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Mỗi case và kết luận model quan trọng đều phải được grounding bằng explicit evidence.</p><h3 id="17-1-evidence-package">17.1 Evidence package</h3><p>Một risk event/case nên có thể chứa:</p><ul>
+<li>final risk score,</li>
+<li>component scores,</li>
+<li>detected typologies,</li>
+<li>anomalous features,</li>
+<li>suspicious counterparties,</li>
+<li>suspicious transaction paths,</li>
+<li>graph/subgraph identifiers liên quan,</li>
+<li>temporal patterns,</li>
+<li>model version,</li>
+<li>feature version,</li>
+<li>event IDs,</li>
+<li>evidence IDs.</li>
+</ul><h3 id="17-2-evidence-invariants">17.2 Evidence invariants</h3><p>Evidence ID phải map tới source fact có thể tái dựng.</p><p>AI agent hoặc explanation layer không được viện dẫn một evidence ID không tồn tại trong evidence package.</p><hr/></div></section><section class="doc-section" data-section="18. ai investigation agent"><div class="section-heading"><h2 id="18-ai-investigation-agent">18. AI Investigation Agent</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">AI Investigation Agent — evidence-grounded, tool-bounded, human-in-control</div><div class="viz-sub">Agent được phép điều tra và đề xuất; không được tự thực hiện hành động ngân hàng không thể đảo ngược.</div></div><span class="viz-tag">AGENT</span></div><div class="flow"><div class="fnode c1">Read Case + Risk</div><div class="fnode c3">Timeline</div><div class="fnode c2">Graph / Path Evidence</div><div class="fnode c3">Historical Behavior</div><div class="fnode c5">Hypotheses</div><div class="fnode c4">Support + Contradictions</div><div class="fnode c6">Narrative + Next Checks</div></div><div class="vgrid cols3" style="margin-top:10px"><div class="vcard"><h4>Grounding invariant</h4><p>Material statement phải cite <strong>evidence_id</strong> tồn tại trong evidence package.</p></div><div class="vcard"><h4>Khi thiếu bằng chứng</h4><p>Phải nói rõ <strong>UNKNOWN</strong> hoặc <strong>INSUFFICIENT EVIDENCE</strong>.</p></div><div class="vcard"><h4>Không được làm</h4><p>Freeze account, file report, sửa score/evidence, promote model, tự đổi disposition.</p></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="18-1-pham-vi">18.1 Phạm vi</h3><p>V1 có một AI investigation agent đầy đủ, nhưng agent không được tự động thực hiện các hành động ngân hàng bị quản lý hoặc không thể đảo ngược.</p><h3 id="18-2-orchestration-duoc-khuyen-nghi">18.2 Orchestration được khuyến nghị</h3><p>LangGraph hoặc explicit state-machine framework tương tự được ưu tiên vì investigation process là multi-step, stateful, tool-driven và phải audit được.</p><h3 id="18-3-agent-tools">18.3 Agent tools</h3><p>Agent có thể truy cập các bounded tool cho:</p><ul>
+<li>lấy case summary,</li>
+<li>lấy entity profile,</li>
+<li>lấy transaction timeline,</li>
+<li>so sánh historical behavior,</li>
+<li>graph-neighbor search,</li>
+<li>path/ring query,</li>
+<li>lấy model score,</li>
+<li>lấy typology evidence,</li>
+<li>prior-case lookup khi được phép,</li>
+<li>evidence retrieval,</li>
+<li>contradiction check.</li>
+</ul><h3 id="18-4-agent-workflow">18.4 Agent workflow</h3><p>Agent nên đi theo quy trình:</p><ol>
+<li>đọc case và risk components,</li>
+<li>inspect timeline,</li>
+<li>inspect graph neighborhood/path evidence,</li>
+<li>inspect historical behavior,</li>
+<li>xây một hoặc nhiều investigation hypothesis,</li>
+<li>tìm evidence ủng hộ,</li>
+<li>tìm evidence mâu thuẫn,</li>
+<li>phân loại confidence,</li>
+<li>tạo case narrative,</li>
+<li>đề xuất các bước kiểm tra tiếp theo cho analyst.</li>
+</ol><h3 id="18-5-ranh-gioi-an-toan-cua-agent">18.5 Ranh giới an toàn của agent</h3><p>Agent không được:</p><ul>
+<li>freeze account,</li>
+<li>file regulatory report,</li>
+<li>sửa model score,</li>
+<li>xóa hoặc viết lại evidence,</li>
+<li>promote model,</li>
+<li>âm thầm thay đổi case disposition,</li>
+<li>bịa evidence.</li>
+</ul><p>Nếu evidence không đủ, output phải ghi rõ <code>UNKNOWN</code> hoặc <code>INSUFFICIENT EVIDENCE</code> thay vì suy diễn unsupported fact.</p><h3 id="18-6-yeu-cau-grounding">18.6 Yêu cầu grounding</h3><p>Các statement quan trọng trong case narrative phải cite internal <code>evidence_id</code>.</p><p>Application phải validate các ID đó với evidence package trước khi trình bày narrative như một output đã grounded.</p><hr/></div></section><section class="doc-section" data-section="19. analyst workflow"><div class="section-heading"><h2 id="19-analyst-workflow">19. Analyst Workflow</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="19-1-cac-disposition-duoc-phep">19.1 Các disposition được phép</h3><p>Tối thiểu gồm:</p><ul>
+<li>Confirmed suspicious</li>
+<li>False positive</li>
+<li>Escalate</li>
+<li>Insufficient evidence</li>
+</ul><h3 id="19-2-luu-feedback">19.2 Lưu feedback</h3><p>Disposition record phải chứa:</p><ul>
+<li>analyst/user identifier,</li>
+<li>timestamp,</li>
+<li>case ID,</li>
+<li>selected disposition,</li>
+<li>optional reason/comment,</li>
+<li>model version,</li>
+<li>evidence snapshot hoặc evidence-package version.</li>
+</ul><h3 id="19-3-cach-dung-feedback">19.3 Cách dùng feedback</h3><p>Analyst feedback có thể dùng cho:</p><ul>
+<li>offline evaluation,</li>
+<li>error analysis,</li>
+<li>future retraining dataset,</li>
+<li>threshold analysis,</li>
+<li>active-learning extension.</li>
+</ul><p>Feedback không được kích hoạt direct autonomous production retraining hoặc promotion ở V1.</p><hr/></div></section><section class="doc-section" data-section="20. investigation ui"><div class="section-heading"><h2 id="20-investigation-ui">20. Investigation UI</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="20-1-rang-buoc-nghien-cuu">20.1 Ràng buộc nghiên cứu</h3><p>Mobbin được chọn là nguồn UI reference ưu tiên, nhưng connector Mobbin hiện yêu cầu paid plan. Vì vậy V1 cố định functional information architecture mà không tuyên bố đã dùng visual reference từ Mobbin.</p><p>Khi có quyền truy cập Mobbin, UI có thể được tinh chỉnh trực quan theo các pattern liên quan tới case management, fraud operations, security operations, graph investigation và analyst workbench mà không thay đổi core product behavior.</p><h3 id="20-2-cac-screen-chinh">20.2 Các screen chính</h3><p>Sản phẩm gồm:</p><ul>
+<li>Operations Dashboard</li>
+<li>Alert Queue</li>
+<li>Case Investigation</li>
+<li>Entity Profile</li>
+<li>Graph Explorer</li>
+<li>Transaction Timeline</li>
+<li>Evidence Viewer</li>
+<li>AI Investigator</li>
+<li>Analyst Disposition</li>
+<li>Model/Drift Console</li>
+</ul><h3 id="20-3-frontend-stack-va-workspace-chinh">20.3 Frontend stack và workspace chính</h3><p>Investigator application dùng <strong>React + TypeScript</strong>. Graph exploration dùng <strong>Cytoscape.js</strong> hoặc một graph visualization library tương thích chỉ khi Cytoscape chứng minh không phù hợp trong giai đoạn implementation. Timeline và metric visualization định lượng dùng một React charting library nhẹ. UI chỉ giao tiếp qua typed Case API endpoint và không query trực tiếp Neo4j hoặc model store.</p><p>Case Investigation là màn hình chính và nhận phần lớn design effort.</p><p>Các vùng layout kỳ vọng:</p><ul>
+<li>case header và overall risk,</li>
+<li>network/graph visualization,</li>
+<li>transaction timeline,</li>
+<li>evidence/model explanation panel,</li>
+<li>AI investigator panel,</li>
+<li>analyst actions/disposition.</li>
+</ul><p>Sản phẩm phải tránh biến thành một dashboard chủ yếu gồm generic chart. Investigation context và evidence mới là trọng tâm.</p><hr/></div></section><section class="doc-section" data-section="21. data quality và governance"><div class="section-heading"><h2 id="21-data-quality-va-governance">21. Data Quality và Governance</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="21-1-event-validation">21.1 Event validation</h3><p>Incoming event phải được validate theo explicit schema.</p><p>Invalid event được quarantine thay vì âm thầm coerce thành valid data.</p><h3 id="21-2-provenance">21.2 Provenance</h3><p>Mỗi scored decision phải có thể lưu hoặc resolve:</p><ul>
+<li>event ID,</li>
+<li>source/dataset,</li>
+<li>event timestamp,</li>
+<li>feature-schema version,</li>
+<li>feature values hoặc reproducible feature references,</li>
+<li>graph-state/snapshot version nếu áp dụng,</li>
+<li>model version,</li>
+<li>rule version,</li>
+<li>component risk scores,</li>
+<li>final score,</li>
+<li>evidence IDs.</li>
+</ul><h3 id="21-3-artifact-integrity">21.3 Artifact integrity</h3><p>Khi hợp lý, lưu cryptographic hash cho:</p><ul>
+<li>dataset artifacts,</li>
+<li>feature schema,</li>
+<li>model artifact,</li>
+<li>configuration,</li>
+<li>source Git commit.</li>
+</ul><p>Mục tiêu là tái dựng quyết định, không phải dùng cryptography chỉ vì bản thân cryptography.</p><hr/></div></section><section class="doc-section" data-section="22. privacy và security simulation"><div class="section-heading"><h2 id="22-privacy-va-security-simulation">22. Privacy và Security Simulation</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Dự án dùng synthetic dataset hoặc public/anonymized dataset có sẵn.</p><p>Yêu cầu:</p><ul>
+<li>không dùng real PII,</li>
+<li>dùng synthetic hoặc anonymized entity ID,</li>
+<li>có basic analyst-role separation trong product model,</li>
+<li>audit logging cho investigation action và disposition,</li>
+<li>secret được quản lý qua environment/config tooling thay vì commit vào source code.</li>
+</ul><p>Dự án không cố xây full banking IAM/security platform.</p><hr/></div></section><section class="doc-section" data-section="23. drift monitoring"><div class="section-heading"><h2 id="23-drift-monitoring">23. Drift Monitoring</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="23-1-feature-drift">23.1 Feature drift</h3><p>Theo dõi distribution như:</p><ul>
+<li>transaction amount,</li>
+<li>transaction velocity,</li>
+<li>channel mix,</li>
+<li>new-counterparty ratio,</li>
+<li>behavioral feature distributions.</li>
+</ul><h3 id="23-2-graph-drift">23.2 Graph drift</h3><p>Theo dõi statistics như:</p><ul>
+<li>degree distributions,</li>
+<li>component sizes,</li>
+<li>neighborhood size,</li>
+<li>clustering/density metrics khi phù hợp,</li>
+<li>motif hoặc typology-proxy frequencies.</li>
+</ul><h3 id="23-3-model-drift">23.3 Model drift</h3><p>Theo dõi:</p><ul>
+<li>PR-AUC khi có label,</li>
+<li>precision@K,</li>
+<li>calibration,</li>
+<li>alert rate,</li>
+<li>typology recall,</li>
+<li>false-positive rate,</li>
+<li>risk-score distribution.</li>
+</ul><p>Drift signal có thể kích hoạt candidate retraining workflow nhưng không tự động promotion.</p><hr/></div></section><section class="doc-section" data-section="24. model lifecycle"><div class="section-heading"><h2 id="24-model-lifecycle">24. Model Lifecycle</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Model lifecycle có human gate</div><div class="viz-sub">Drift có thể kích hoạt retraining candidate nhưng V1 cấm auto-promotion production.</div></div><span class="viz-tag">MLOPS</span></div><div class="lifecycle"><div class="life">Drift / Scheduled Trigger</div><div class="life">Candidate Retraining</div><div class="life">Chronological Evaluation</div><div class="life">Calibration + Unknown Typology</div><div class="life">AMLSim Stress Tests</div><div class="life">Shadow / Challenger</div><div class="life gate">HUMAN REVIEW<br/><small>gate</small></div><div class="life stop">Explicit Promotion<br/><small>không auto</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><p>MLflow hoặc experiment/registry system tương đương là bắt buộc.</p><p>Cần track:</p><ul>
+<li>dataset/version references,</li>
+<li>Git SHA,</li>
+<li>parameters,</li>
+<li>metrics,</li>
+<li>artifacts,</li>
+<li>model package,</li>
+<li>evaluation reports,</li>
+<li>candidate/champion status.</li>
+</ul><h3 id="24-1-retraining-workflow">24.1 Retraining workflow</h3><p>Lifecycle bắt buộc:</p><ol>
+<li>drift hoặc scheduled research trigger,</li>
+<li>candidate retraining,</li>
+<li>chronological evaluation,</li>
+<li>calibration,</li>
+<li>unknown-typology evaluation,</li>
+<li>adversarial AMLSim stress test,</li>
+<li>shadow/challenger evaluation nếu triển khai,</li>
+<li>human review,</li>
+<li>explicit promotion.</li>
+</ol><p>Production auto-promotion bị cấm trong V1.</p><hr/></div></section><section class="doc-section" data-section="25. evaluation framework"><div class="section-heading"><h2 id="25-evaluation-framework">25. Evaluation Framework</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Accuracy đơn thuần không phải headline metric chấp nhận được.</p><h3 id="25-1-core-model-metrics">25.1 Core model metrics</h3><ul>
+<li>PR-AUC</li>
+<li>recall tại fixed precision</li>
+<li>precision tại top-K case</li>
+<li>F1 là secondary metric</li>
+<li>calibration error / Brier score khi phù hợp</li>
+</ul><h3 id="25-2-aml-metrics">25.2 AML metrics</h3><ul>
+<li>detection rate theo từng AML typology</li>
+<li>suspicious subgraph/ring recall</li>
+<li>unseen-typology detection rate</li>
+<li>time-to-detection</li>
+<li>monetary exposure captured khi amount data hỗ trợ</li>
+</ul><h3 id="25-3-operational-metrics">25.3 Operational metrics</h3><ul>
+<li>false positive trên mỗi 1.000 account</li>
+<li>alert mỗi ngày hoặc normalized simulated-day tương đương</li>
+<li>case volume</li>
+<li>p50/p95/p99 scoring latency</li>
+<li>throughput</li>
+<li>quarantine/error rates</li>
+</ul><h3 id="25-4-yeu-cau-comparison">25.4 Yêu cầu comparison</h3><p>Final benchmark phải gồm:</p><ul>
+<li>classical/tabular baseline,</li>
+<li>static graph baseline,</li>
+<li>graph anomaly baseline,</li>
+<li>temporal graph baseline,</li>
+<li>hybrid system.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="26. ablation studies"><div class="section-heading"><h2 id="26-ablation-studies">26. Ablation Studies</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Tối thiểu phải đánh giá ảnh hưởng khi loại bỏ hoặc thay thế:</p><ul>
+<li>temporal modeling,</li>
+<li>heterogeneous entity types,</li>
+<li>graph anomaly component,</li>
+<li>behavioral anomaly component,</li>
+<li>supervised typology head,</li>
+<li>risk fusion strategy,</li>
+<li>một số graph/context feature được chọn.</li>
+</ul><p>Mục tiêu là chứng minh component nào thực sự cải thiện detection, thay vì chỉ làm hệ thống phức tạp hơn.</p><hr/></div></section><section class="doc-section" data-section="27. observability"><div class="section-heading"><h2 id="27-observability">27. Observability</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="27-1-stack">27.1 Stack</h3><p>Sử dụng:</p><ul>
+<li>structured application logs,</li>
+<li>Prometheus,</li>
+<li>Grafana.</li>
+</ul><h3 id="27-2-operational-telemetry">27.2 Operational telemetry</h3><p>Các metric kỳ vọng gồm:</p><ul>
+<li><code>transactions_processed_total</code></li>
+<li><code>scoring_latency_seconds</code></li>
+<li><code>alerts_created_total</code></li>
+<li><code>alert_rate</code></li>
+<li><code>kafka_consumer_lag</code></li>
+<li><code>feature_lookup_latency_seconds</code></li>
+<li><code>graph_state_update_latency_seconds</code></li>
+<li><code>model_score_distribution</code></li>
+<li><code>quarantine_events_total</code></li>
+<li><code>agent_latency_seconds</code></li>
+<li><code>agent_grounding_failures_total</code></li>
+<li><code>graph_nodes</code></li>
+<li><code>graph_edges</code></li>
+</ul><h3 id="27-3-grafana-views">27.3 Grafana views</h3><p>Cung cấp ít nhất ba logical dashboard:</p><ul>
+<li>System Health</li>
+<li>Model Health</li>
+<li>AML Operations</li>
+</ul><hr/></div></section><section class="doc-section" data-section="28. infrastructure"><div class="section-heading"><h2 id="28-infrastructure">28. Infrastructure</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="28-1-moi-truong-chinh">28.1 Môi trường chính</h3><p>Docker Compose là local integration environment được hỗ trợ chính.</p><p>Các infrastructure/service kỳ vọng gồm:</p><ul>
+<li>Kafka</li>
+<li>PostgreSQL</li>
+<li>Redis</li>
+<li>Neo4j</li>
+<li>MinIO</li>
+<li>MLflow</li>
+<li>Prometheus</li>
+<li>Grafana</li>
+<li>ingestion service</li>
+<li>feature service/engine</li>
+<li>graph-state service</li>
+<li>scoring service</li>
+<li>case API</li>
+<li>investigation agent</li>
+<li>investigator web application</li>
+</ul><h3 id="28-2-kubernetes">28.2 Kubernetes</h3><p>Kubernetes manifest chỉ là ví dụ tùy chọn và không được trở thành dependency cho local development hoặc core acceptance test.</p><hr/></div></section><section class="doc-section" data-section="29. service boundaries"><div class="section-heading"><h2 id="29-service-boundaries">29. Service Boundaries</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Service boundaries — mỗi service có một trách nhiệm rõ</div><div class="viz-sub">Typed contracts giúp từng service test độc lập và tránh việc UI/agent truy cập thẳng database/model store.</div></div><span class="viz-tag">SERVICES</span></div><div class="flow"><div class="fnode c1">Ingestion<small>validate • quarantine • normalize</small></div><div class="fnode c3">Feature Engine<small>compute • parity</small></div><div class="fnode c2">Graph-State<small>bounded temporal state</small></div><div class="fnode c6">Scoring<small>model • fusion • evidence</small></div><div class="fnode c5">Case API<small>cases • timeline • evidence</small></div><div class="fnode c4">Investigation Agent<small>approved tools only</small></div><div class="fnode c1">Investigator Web<small>alert → disposition</small></div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="29-1-ingestion-service">29.1 Ingestion service</h3><p>Trách nhiệm:</p><ul>
+<li>consume/replay banking event,</li>
+<li>validate schema,</li>
+<li>quarantine invalid data,</li>
+<li>publish normalized event.</li>
+</ul><h3 id="29-2-feature-engine">29.2 Feature engine</h3><p>Trách nhiệm:</p><ul>
+<li>compute/update online feature,</li>
+<li>enforce feature definition,</li>
+<li>serve hoặc materialize online feature,</li>
+<li>giữ offline/online parity.</li>
+</ul><h3 id="29-3-graph-state-service">29.3 Graph-state service</h3><p>Trách nhiệm:</p><ul>
+<li>update bounded temporal state,</li>
+<li>expose neighborhood/state information model cần,</li>
+<li>tránh phụ thuộc slow investigation query.</li>
+</ul><h3 id="29-4-scoring-service">29.4 Scoring service</h3><p>Trách nhiệm:</p><ul>
+<li>load production model package,</li>
+<li>lấy online feature/state,</li>
+<li>score entity/event,</li>
+<li>thực hiện risk fusion,</li>
+<li>tạo evidence package,</li>
+<li>publish risk event.</li>
+</ul><h3 id="29-5-case-api">29.5 Case API</h3><p>Trách nhiệm:</p><ul>
+<li>quản lý alert/case,</li>
+<li>expose case timeline/evidence,</li>
+<li>persist analyst disposition,</li>
+<li>cung cấp bounded endpoint cho UI và investigation tool.</li>
+</ul><h3 id="29-6-investigation-agent">29.6 Investigation agent</h3><p>Trách nhiệm:</p><ul>
+<li>orchestrate investigation được grounding bằng evidence,</li>
+<li>query approved tool,</li>
+<li>tạo hypothesis, contradiction, narrative và recommended next checks,</li>
+<li>không bao giờ thực hiện irreversible banking action.</li>
+</ul><h3 id="29-7-investigator-web">29.7 Investigator web</h3><p>Trách nhiệm:</p><ul>
+<li>analyst alert queue,</li>
+<li>case investigation workspace,</li>
+<li>graph/timeline exploration,</li>
+<li>evidence visualization,</li>
+<li>tương tác AI investigator,</li>
+<li>disposition capture.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="30. nguyên tắc api và event design"><div class="section-heading"><h2 id="30-nguyen-tac-api-va-event-design">30. Nguyên tắc API và Event Design</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><ul>
+<li>Mọi externally meaningful event phải có stable event ID.</li>
+<li>Schema phải được version.</li>
+<li>Risk event phải reference chính xác model/feature/evidence version đã dùng.</li>
+<li>API nên trả typed, bounded object thay vì raw database row.</li>
+<li>Agent tool nên expose narrow investigation capability, không cho unrestricted database access.</li>
+<li>Service nên giao tiếp qua explicit contract cho phép test độc lập.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="31. failure handling"><div class="section-heading"><h2 id="31-failure-handling">31. Failure Handling</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><h3 id="31-1-invalid-data">31.1 Invalid data</h3><p>Invalid event được quarantine kèm reason code và không được âm thầm process.</p><h3 id="31-2-feature-state-failure">31.2 Feature/state failure</h3><p>Một scoring request/event không lấy được feature hoặc temporal state bắt buộc phải tạo typed failure outcome thay vì tạo ungrounded score.</p><h3 id="31-3-model-failure">31.3 Model failure</h3><p>Model-loading và inference error phải fail closed khi scoring: không được bịa synthetic risk score.</p><h3 id="31-4-agent-failure">31.4 Agent failure</h3><p>Nếu AI provider lỗi hoặc evidence retrieval không đầy đủ, case vẫn phải truy cập được mà không cần AI narrative. Hệ thống phải hiển thị trạng thái degraded/insufficient-evidence rõ ràng.</p><h3 id="31-5-persistence-failure">31.5 Persistence failure</h3><p>Risk event và case nên có thể tạo idempotently từ stable ID khi phù hợp để retry không tạo duplicate investigation record.</p><hr/></div></section><section class="doc-section" data-section="32. testing strategy"><div class="section-heading"><h2 id="32-testing-strategy">32. Testing Strategy</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Testing pyramid + deterministic end-to-end scenario</div><div class="viz-sub">Spec yêu cầu test không chỉ code correctness mà cả ML leakage, service integration và performance.</div></div><span class="viz-tag">TEST</span></div><div class="vgrid cols4"><div class="vcard"><h4>Unit</h4><p>features, graph transforms, rules, fusion, evidence, schemas, windows.</p></div><div class="vcard"><h4>ML</h4><p>seeds, no holdout leakage, reproducible preprocessing, package compatibility.</p></div><div class="vcard"><h4>Integration</h4><p>Kafka → feature → graph state → risk → case → agent → disposition.</p></div><div class="vcard"><h4>Performance</h4><p>throughput, p50/p95/p99, store latency, graph update latency, lag.</p></div></div><div class="flow" style="margin-top:10px"><div class="fnode c1">Replay</div><div class="fnode c1">Kafka</div><div class="fnode c3">Features</div><div class="fnode c2">Graph Update</div><div class="fnode c6">Inference + Fusion</div><div class="fnode c5">Case + Evidence</div><div class="fnode c4">AI + Analyst</div><div class="fnode c1">Audit Trail</div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><h3 id="32-1-unit-tests">32.1 Unit tests</h3><p>Cover:</p><ul>
+<li>feature calculation,</li>
+<li>graph transformation,</li>
+<li>typology rule,</li>
+<li>risk fusion,</li>
+<li>evidence validation,</li>
+<li>agent grounding check,</li>
+<li>schema validation,</li>
+<li>time-window logic.</li>
+</ul><h3 id="32-2-ml-tests">32.2 ML tests</h3><p>Cover:</p><ul>
+<li>deterministic seed khi có thể,</li>
+<li>không train/holdout leakage,</li>
+<li>reproducible preprocessing,</li>
+<li>baseline smoke training,</li>
+<li>model-package load/score compatibility,</li>
+<li>calibration behavior.</li>
+</ul><h3 id="32-3-integration-tests">32.3 Integration tests</h3><p>Cover:</p><ul>
+<li>Kafka event → normalized event,</li>
+<li>event → online feature,</li>
+<li>event → graph state update,</li>
+<li>event → risk event,</li>
+<li>risk event → case,</li>
+<li>case → agent investigation,</li>
+<li>persist analyst disposition.</li>
+</ul><h3 id="32-4-end-to-end-test">32.4 End-to-end test</h3><p>Một deterministic synthetic scenario phải đi qua toàn bộ flow:</p><p><code>AMLSim/AusAML replay -&gt; Kafka -&gt; validation -&gt; features -&gt; graph update -&gt; inference -&gt; risk fusion -&gt; alert -&gt; case -&gt; evidence -&gt; AI investigation -&gt; analyst disposition -&gt; audit trail</code>.</p><h3 id="32-5-performance-tests">32.5 Performance tests</h3><p>Đo:</p><ul>
+<li>scoring throughput,</li>
+<li>p50/p95/p99 latency,</li>
+<li>feature-store latency,</li>
+<li>graph-state update latency,</li>
+<li>Kafka lag dưới load.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="33. research artifacts"><div class="section-heading"><h2 id="33-research-artifacts">33. Research Artifacts</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Repository phải chứa research documentation và output lâu dài.</p><p>Cấu trúc kỳ vọng:</p><pre><code class="language-text">experiments/
+  baselines/
+  ablations/
+  unseen-typology/
+  adversarial/
+
+docs/
+  architecture/
+  data-card/
+  model-card/
+  evaluation/
+  runbooks/
+
+notebooks/
+  eda/
+  baseline-comparison/
+</code></pre><p>Final artifact bắt buộc gồm:</p><ul>
+<li>architecture document,</li>
+<li>data card,</li>
+<li>model card,</li>
+<li>baseline comparison report,</li>
+<li>ablation report,</li>
+<li>unseen-typology report,</li>
+<li>adversarial stress-test report,</li>
+<li>latency benchmark,</li>
+<li>operational runbook.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="34. monorepo layout"><div class="section-heading"><h2 id="34-monorepo-layout">34. Monorepo Layout</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Cấu trúc mục tiêu:</p><pre><code class="language-text">financial-crime-intelligence-platform/
+
+apps/
+  investigator-web/
+
+services/
+  ingestion/
+  feature-engine/
+  graph-state/
+  scoring/
+  case-api/
+  investigation-agent/
+
+ml/
+  datasets/
+  features/
+  graph/
+  baselines/
+  temporal/
+  fusion/
+  training/
+  evaluation/
+  explainability/
+
+simulation/
+  amlsim/
+
+schemas/
+
+infra/
+  docker/
+  kubernetes/
+  monitoring/
+
+experiments/
+  baselines/
+  ablations/
+  unseen-typology/
+  adversarial/
+
+notebooks/
+  eda/
+  baseline-comparison/
+
+docs/
+  architecture/
+  data-card/
+  model-card/
+  evaluation/
+  runbooks/
+  superpowers/
+    specs/
+</code></pre><p>Tên package nội bộ cụ thể có thể thay đổi trong implementation planning, nhưng service boundary và research boundary ở trên phải luôn rõ ràng.</p><hr/></div></section><section class="doc-section" data-section="35. reuse strategy và attribution"><div class="section-heading"><h2 id="35-reuse-strategy-va-attribution">35. Reuse Strategy và Attribution</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>External system/repository có thể tái sử dụng là dependency/reference implementation, không phải đóng góp nguyên bản của dự án.</p><p>Các reuse candidate kỳ vọng gồm:</p><ul>
+<li>AusAML / AMLBench cho primary data,</li>
+<li>IBM AMLSim cho controlled synthetic AML stress scenario,</li>
+<li>PyGOD cho graph anomaly baseline,</li>
+<li>PyTorch Geometric cho graph-learning infrastructure,</li>
+<li>TGN concept/reference implementation cho temporal graph learning,</li>
+<li>GraphSAGE/GAT/HGT implementation cho baseline,</li>
+<li>Feast cho feature-store abstraction,</li>
+<li>MLflow cho experiment tracking và model registry,</li>
+<li>Kafka cho event streaming,</li>
+<li>Neo4j cho graph investigation,</li>
+<li>Prometheus/Grafana cho observability,</li>
+<li>LangGraph hoặc tương đương cho bounded investigation-agent orchestration.</li>
+</ul><p>Mọi source code tái sử dụng phải giữ đúng licensing và attribution requirement.</p><p>Dự án phải phân biệt rõ:</p><ul>
+<li>imported dependency,</li>
+<li>adapted reference implementation,</li>
+<li>project-specific implementation,</li>
+<li>research contribution.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="36. các điểm khác biệt chính"><div class="section-heading"><h2 id="36-cac-diem-khac-biet-chinh">36. Các điểm khác biệt chính</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Giá trị khác biệt của dự án đến từ sự kết hợp của:</p><ol>
+<li>fiat-banking heterogeneous graph ontology,</li>
+<li>continuous-time temporal entity modeling,</li>
+<li>supervised known-AML detection,</li>
+<li>unsupervised novelty detection,</li>
+<li>account-level và subgraph-level risk,</li>
+<li>calibrated interpretable risk fusion,</li>
+<li>held-out unknown-typology experiment,</li>
+<li>adversarial AMLSim stress testing,</li>
+<li>evidence-first investigation output,</li>
+<li>bounded AI investigation agent,</li>
+<li>near-real-time streaming inference,</li>
+<li>analyst feedback và model-governance workflow.</li>
+</ol><hr/></div></section><section class="doc-section" data-section="37. acceptance criteria / definition of done"><div class="section-heading"><h2 id="37-acceptance-criteria-definition-of-done">37. Acceptance Criteria / Definition of Done</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><div class="viz"><div class="viz-head"><div><div class="viz-title">Definition of Done — model train được mới chỉ là một phần</div><div class="viz-sub">Acceptance phải đồng thời thỏa ML/research, product, systems và governance.</div></div><span class="viz-tag">DONE</span></div><div class="matrix"><div class="mh">Dimension</div><div class="mh">Phải chứng minh</div><div class="mh">Artifact / Surface</div><div class="mh">Gate chính</div><div class="rowh">ML / Research</div><div>Baselines, hybrid, chronological holdout, unknown typology, stress, ablation</div><div>Reports + reproducible evidence</div><div class="ok">No leakage</div><div class="rowh">Product</div><div>Alerts, case, entity, timeline, graph, evidence, AI, disposition</div><div>Investigator UI</div><div class="ok">Grounded workflow</div><div class="rowh">Systems</div><div>Logs, Prometheus, Grafana, Compose, latency, quarantine</div><div>Runtime + dashboards</div><div class="ok">E2E runnable</div><div class="rowh">Governance</div><div>Reconstruct source, model, feature, time, risk, evidence, disposition</div><div>Case provenance</div><div class="ok">Decision reconstructable</div></div><div class="viz-note">Sơ đồ dùng để mô hình hóa nội dung của spec; toàn bộ requirement chi tiết vẫn được giữ nguyên bên dưới.</div></div><p>Dự án không được xem là hoàn thành chỉ vì model training chạy thành công.</p><h3 id="37-1-end-to-end-functional-acceptance">37.1 End-to-end functional acceptance</h3><p>Flow sau phải chạy end-to-end:</p><p><code>AusAML/AMLSim replay -&gt; Kafka -&gt; schema validation -&gt; online features -&gt; temporal graph update -&gt; model scoring -&gt; risk fusion -&gt; alert -&gt; case -&gt; graph/evidence UI -&gt; AI investigation -&gt; analyst disposition -&gt; audit trail</code>.</p><h3 id="37-2-ml-research-acceptance">37.2 ML/research acceptance</h3><p>Repository phải cung cấp reproducible evidence cho:</p><ul>
+<li>ít nhất một tabular baseline,</li>
+<li>ít nhất một graph anomaly baseline,</li>
+<li>ít nhất một static GNN baseline,</li>
+<li>TGN-style temporal baseline,</li>
+<li>hybrid model,</li>
+<li>strict chronological holdout evaluation,</li>
+<li>unknown-typology evaluation,</li>
+<li>AMLSim adversarial stress testing,</li>
+<li>ablation study,</li>
+<li>calibration/risk-fusion comparison.</li>
+</ul><h3 id="37-3-product-acceptance">37.3 Product acceptance</h3><p>UI phải hỗ trợ:</p><ul>
+<li>prioritized alert,</li>
+<li>case investigation,</li>
+<li>entity context,</li>
+<li>transaction timeline,</li>
+<li>suspicious graph/path visualization,</li>
+<li>model/evidence inspection,</li>
+<li>AI investigation narrative có evidence grounding,</li>
+<li>analyst disposition.</li>
+</ul><h3 id="37-4-systems-acceptance">37.4 Systems acceptance</h3><p>Hệ thống phải expose:</p><ul>
+<li>structured logs,</li>
+<li>Prometheus metrics,</li>
+<li>Grafana dashboards,</li>
+<li>reproducible Docker Compose startup,</li>
+<li>documented scoring latency benchmark,</li>
+<li>quarantine behavior cho invalid input.</li>
+</ul><h3 id="37-5-governance-acceptance">37.5 Governance acceptance</h3><p>Một stored case phải có khả năng xác định hoặc tái dựng:</p><ul>
+<li>source event(s),</li>
+<li>model version,</li>
+<li>feature version,</li>
+<li>scoring timestamp,</li>
+<li>risk components,</li>
+<li>final risk,</li>
+<li>evidence references,</li>
+<li>analyst disposition history.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="38. tiêu chí thành công"><div class="section-heading"><h2 id="38-tieu-chi-thanh-cong">38. Tiêu chí thành công</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Dự án thành công nếu chứng minh được tất cả các điểm sau:</p><ul>
+<li>AML detection mạnh hơn simple rule/tabular baseline trên chronological holdout,</li>
+<li>graph và/hoặc temporal component tạo lợi ích đo được và được hỗ trợ bằng ablation,</li>
+<li>phát hiện hữu ích ít nhất một held-out/unseen suspicious pattern,</li>
+<li>có phân tích graceful degradation dưới adversarial AMLSim scenario,</li>
+<li>near-real-time scoring với latency được document,</li>
+<li>investigation flow cho analyst có evidence backing,</li>
+<li>model và data provenance có thể tái lập,</li>
+<li>một câu chuyện sản phẩm end-to-end mạch lạc, phù hợp cho cả technical interview và research-oriented review.</li>
+</ul><hr/></div></section><section class="doc-section" data-section="39. mở rộng tương lai"><div class="section-heading"><h2 id="39-mo-rong-tuong-lai">39. Mở rộng tương lai</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p>Các extension tiềm năng sau V1 gồm:</p><ul>
+<li>active learning cho analyst prioritization,</li>
+<li>federated multi-bank fraud learning,</li>
+<li>cross-bank privacy-preserving graph intelligence,</li>
+<li>multi-agent case investigation,</li>
+<li>richer rule-learning system,</li>
+<li>scenario generation được conditioned theo điểm yếu detector,</li>
+<li>graph foundation model,</li>
+<li>production Kubernetes deployment,</li>
+<li>regulatory-report drafting với human review bắt buộc,</li>
+<li>tinh chỉnh UI sâu hơn theo Mobbin khi có quyền truy cập reference.</li>
+</ul><p>Các extension này không được xem là requirement của V1.</p><hr/></div></section><section class="doc-section" data-section="40. tuyên bố sản phẩm cuối cùng"><div class="section-heading"><h2 id="40-tuyen-bo-san-pham-cuoi-cung">40. Tuyên bố sản phẩm cuối cùng</h2><button aria-label="Thu gọn/mở rộng phần" class="section-toggle" type="button">Thu gọn</button></div><div class="section-body"><p><strong>Financial Crime Intelligence Platform</strong> là một nền tảng AML cho fiat banking, kết hợp temporal heterogeneous graph learning, anomaly detection, known-typology modeling, streaming risk scoring, suspicious-network discovery, evidence-grounded AI investigation, analyst feedback và adversarial stress testing.</p><p>Mô tả portfolio/research dự kiến:</p><blockquote>
+<p>Xây dựng một nền tảng temporal heterogeneous graph intelligence cho AML ngân hàng tiền pháp định, kết hợp supervised typology recognition với unsupervised graph novelty detection, real-time streaming risk scoring, evidence-grounded AI investigation, adversarial AML simulation và analyst feedback.</p>
+</blockquote></div></section></div>
+<div class="no-results" id="noResults">Không tìm thấy nội dung phù hợp.</div>
+<footer><span>V2 Visual Spec • Giữ nguyên nội dung chi tiết + bổ sung diagram để đọc nhanh và hiểu kiến trúc trước khi đọc requirement.</span></footer>
+</main>
+</div>
+<script>
+(function(){
+  const root=document.documentElement;
+  const saved=localStorage.getItem('fcip-theme');
+  if(saved) root.dataset.theme=saved;
+  const themeBtn=document.getElementById('themeBtn');
+  themeBtn.addEventListener('click',()=>{
+    const next=root.dataset.theme==='dark'?'light':'dark';
+    root.dataset.theme=next; localStorage.setItem('fcip-theme',next);
+  });
+
+  document.querySelectorAll('.section-toggle').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const sec=btn.closest('.doc-section'); sec.classList.toggle('collapsed');
+      btn.textContent=sec.classList.contains('collapsed')?'Mở':'Thu gọn';
+    });
+  });
+  document.getElementById('collapseAll').addEventListener('click',()=>{
+    document.querySelectorAll('.doc-section').forEach(s=>{s.classList.add('collapsed');s.querySelector('.section-toggle').textContent='Mở'});
+  });
+  document.getElementById('expandAll').addEventListener('click',()=>{
+    document.querySelectorAll('.doc-section').forEach(s=>{s.classList.remove('collapsed');s.querySelector('.section-toggle').textContent='Thu gọn'});
+  });
+
+  const search=document.getElementById('search');
+  const noResults=document.getElementById('noResults');
+  search.addEventListener('input',()=>{
+    const q=search.value.toLowerCase().trim(); let count=0;
+    document.querySelectorAll('.doc-section').forEach(sec=>{
+      const match=!q || sec.innerText.toLowerCase().includes(q);
+      sec.style.display=match?'':'none'; if(match) count++;
+      if(q && match){sec.classList.remove('collapsed');sec.querySelector('.section-toggle').textContent='Thu gọn';}
+    });
+    noResults.style.display=count?'none':'block';
+  });
+
+  const progress=document.querySelector('.progress');
+  function onScroll(){
+    const d=document.documentElement; const max=d.scrollHeight-d.clientHeight;
+    progress.style.width=(max? (d.scrollTop/max*100):0)+'%';
+  }
+  document.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+  const links=[...document.querySelectorAll('.toc a')];
+  const heads=[...document.querySelectorAll('h2[id],h3[id]')];
+  const obs=new IntersectionObserver(entries=>{
+    entries.filter(e=>e.isIntersecting).forEach(e=>{
+      links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));
+    });
+  },{rootMargin:'-20% 0px -72% 0px',threshold:0});
+  heads.forEach(h=>obs.observe(h));
+})();
+</script>
+</body>
+</html>

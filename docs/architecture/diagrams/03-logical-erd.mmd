@@ -1,0 +1,94 @@
+---
+title: Logical ERD — domain contracts, không phải physical PostgreSQL schema
+---
+erDiagram
+  accTitle: Logical ERD của các AML domain contracts
+  accDescr: Quan hệ logical giữa dataset, trace gold, training run, model package, case, evidence, analyst feedback và release manifest.
+  DATASET_MANIFEST ||--o{ TRACE_GOLD_CASE : "contains"
+  TRACE_GOLD_CASE ||--|{ TRACE_EDGE : "labels"
+  DATASET_MANIFEST ||--o{ SPLIT_MANIFEST : "freezes"
+  DATASET_MANIFEST ||--o{ TRAINING_RUN : "hash referenced by"
+  SPLIT_MANIFEST ||--o{ TRAINING_RUN : "selects data for"
+  TRAINING_RUN ||--o{ MODEL_PACKAGE : "produces"
+  MODEL_PACKAGE ||--o{ TRACE_SNAPSHOT : "scores and ranks"
+  TRACE_SNAPSHOT ||--o{ CASE_SNAPSHOT : "included in"
+  CASE_SNAPSHOT }o--o{ EVIDENCE_ITEM : "references"
+  CASE_SNAPSHOT ||--o{ ANALYST_FEEDBACK : "receives"
+  ANALYST_FEEDBACK ||--o| ADJUDICATION : "decided by"
+  MODEL_PACKAGE }o--|| RELEASE_MANIFEST : "hash bound in"
+  TRACE_SNAPSHOT }o--|| RELEASE_MANIFEST : "report bound in"
+
+  DATASET_MANIFEST {
+    string dataset_id PK
+    string source_url
+    string license
+    string sha256
+    string schema_hash
+  }
+  TRACE_GOLD_CASE {
+    string case_id PK
+    string dataset_id FK
+    string typology
+    int generator_seed
+    string configuration_hash
+  }
+  TRACE_EDGE {
+    string edge_id PK
+    string case_id FK
+    datetime event_time
+    string label "RELEVANT|BENIGN|UNKNOWN"
+  }
+  SPLIT_MANIFEST {
+    string split_hash PK
+    string dataset_id FK
+    string protocol_version
+  }
+  TRAINING_RUN {
+    string run_id PK
+    string dataset_hash FK
+    string split_hash FK
+    string feature_hash
+    string model_family
+  }
+  MODEL_PACKAGE {
+    string artifact_sha256 PK
+    string run_id FK
+    string git_sha
+    boolean selected
+  }
+  TRACE_SNAPSHOT {
+    string trace_id PK
+    string model_hash FK
+    string seed_entity
+    string outcome_flags
+  }
+  CASE_SNAPSHOT {
+    string case_id PK
+    string trace_id FK
+    string snapshot_hash
+  }
+  EVIDENCE_ITEM {
+    string evidence_id PK
+    string category
+    string polarity
+    string source_reference
+    string integrity_hash
+  }
+  ANALYST_FEEDBACK {
+    string event_id PK
+    string case_id FK
+    string analyst_id
+    string action
+    datetime created_at
+  }
+  ADJUDICATION {
+    string feedback_event_id PK
+    string status "PENDING|ACCEPTED|REJECTED"
+    string decided_by
+  }
+  RELEASE_MANIFEST {
+    string git_sha PK
+    string model_hash FK
+    string trace_report_hash
+    int actual_cash_cost_vnd
+  }

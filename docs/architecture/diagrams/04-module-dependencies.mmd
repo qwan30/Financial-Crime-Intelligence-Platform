@@ -1,0 +1,43 @@
+---
+title: Phụ thuộc module — A → B nghĩa là A cung cấp artifact cho B
+---
+flowchart TB
+  accTitle: Phụ thuộc giữa các module của nền tảng AML
+  accDescr: Contracts cung cấp artifacts cho data, graph, training, tracing, case product, optional agent, later streaming và release evidence.
+  contracts["contracts\nManifests + TrainingRunSpec"]
+  data["data\nAdapters + TraceBench + splits"]
+  graphFeatures["graph + features\nCausal point-in-time state"]
+  training["training + detection evaluation\nRules, tabular, GraphSAGE, gates"]
+  tracing["tracing + trace evaluation\nCandidates, rankers, matched recall"]
+  evidence["evidence + cases\nImmutable snapshots + feedback"]
+  product["case API + investigator web"]
+  agent["agent workflow\nOPTIONAL"]
+  provider["DeepSeek adapter\nOPTIONAL"]
+  streaming["streaming + infra\nLATER"]
+  monitoring["monitoring + MLflow\nLATER"]
+  release["release manifest\nExact hashes"]
+
+  contracts --> data --> graphFeatures
+  contracts --> training
+  graphFeatures --> training
+  graphFeatures --> tracing
+  training --> tracing
+  training --> evidence
+  tracing --> evidence
+  evidence --> product
+  evidence -. "bounded reads" .-> agent
+  agent -.-> provider
+  graphFeatures -.-> streaming
+  training -. "frozen ModelPackage" .-> streaming
+  tracing -.-> streaming
+  streaming -.-> monitoring
+  training --> release
+  tracing --> release
+  monitoring -.-> release
+
+  classDef core fill:#e8f0fe,stroke:#2563eb,color:#102a43,stroke-width:2px;
+  classDef data fill:#e6fffa,stroke:#087f5b,color:#102a43,stroke-width:2px;
+  classDef optional fill:#fff7e6,stroke:#c05621,color:#102a43,stroke-width:2px,stroke-dasharray:6 4;
+  class contracts,data,graphFeatures,evidence data;
+  class training,tracing,product,release core;
+  class agent,provider,streaming,monitoring optional;

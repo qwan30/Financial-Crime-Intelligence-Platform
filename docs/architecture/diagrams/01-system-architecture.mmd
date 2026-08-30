@@ -1,0 +1,57 @@
+---
+title: Kiến trúc hệ thống mục tiêu — Container view
+---
+flowchart TB
+  accTitle: Kiến trúc container của Financial Crime Intelligence Platform
+  accDescr: Dữ liệu đi qua research pipeline thành frozen artifacts, sau đó phục vụ detection, bounded tracing, case investigation, optional AI và later online replay.
+  datasets["AMLSim + AMLBench/AusAML\nSynthetic/public datasets"]
+  analyst(["AML Investigator"])
+
+  subgraph platform["Financial Crime Intelligence Platform — TARGET"]
+    direction TB
+
+    subgraph core["Research + Investigation Core"]
+      direction LR
+      research["Offline Research Pipeline\nManifests, splits, graph, training, evaluation"]
+      artifacts[("Frozen Artifacts\nModelPackage, metrics, exact hashes")]
+      investigation["Investigation Services\nDetection, bounded tracing, evidence, cases"]
+      workbench["Investigator Workbench\nCase API, graph, timeline, evidence"]
+      research -->|"freeze + hash"| artifacts
+      artifacts -->|"load selected package"| investigation
+      investigation -->|"typed case projection"| workbench
+    end
+
+    subgraph optional["OPTIONAL AI Investigation"]
+      direction LR
+      agent["LangGraph + bounded tools\nRead-only evidence access"]
+      validator["Local output validator\nSchema + evidence citations"]
+      deepseek["DeepSeek API\nToken/call/VND caps"]
+      agent -. "budgeted call" .-> deepseek
+      deepseek -. "structured draft" .-> validator
+    end
+
+    subgraph later["LATER Online Replay"]
+      direction LR
+      kafka["Kafka replay"]
+      online["Validation + idempotent state\nOffline/online scoring parity"]
+      monitoring["Operations + drift monitoring"]
+      kafka -.-> online -.-> monitoring
+    end
+  end
+
+  datasets -->|"versioned source"| research
+  workbench --> analyst
+  analyst -->|"feedback / disposition"| investigation
+  workbench -. "DEEPSEEK_ON" .-> agent
+  investigation -. "bounded evidence read" .-> agent
+  validator -. "AI_HYPOTHESIS only" .-> workbench
+  online -. "risk event" .-> investigation
+
+  classDef coreStyle fill:#e8f0fe,stroke:#2563eb,color:#102a43,stroke-width:2px;
+  classDef dataStyle fill:#e6fffa,stroke:#087f5b,color:#102a43,stroke-width:2px;
+  classDef optionalStyle fill:#fff7e6,stroke:#c05621,color:#102a43,stroke-width:2px,stroke-dasharray:6 4;
+  classDef externalStyle fill:#f8fafc,stroke:#64748b,color:#102a43,stroke-width:2px;
+  class research,investigation,workbench coreStyle;
+  class artifacts dataStyle;
+  class agent,validator,deepseek,kafka,online,monitoring optionalStyle;
+  class datasets,analyst externalStyle;
