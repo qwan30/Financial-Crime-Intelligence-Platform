@@ -1,0 +1,11 @@
+{
+  "run_id": "baseline-001",
+  "hypothesis": "LightGBM improves precision at K over deterministic rules",
+  "model_family": "lightgbm",
+  "dataset_manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "split_manifest_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "feature_schema_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "primary_metric": "precision_at_k",
+  "alert_budget": 100,
+  "search_trial_cap": 20
+}
