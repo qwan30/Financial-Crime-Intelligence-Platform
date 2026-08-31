@@ -1,0 +1,28 @@
+{
+  "dataset_id": "amlsim-20k-fanin200",
+  "source_url": "https://github.com/IBM/AMLSim/tree/7338a4bcb1af9bcfea2201ad7daccfe2a4d569ca",
+  "source_commit": "7338a4bcb1af9bcfea2201ad7daccfe2a4d569ca",
+  "license": "Apache-2.0",
+  "sha256": "e2479ab7a1ecfcd369a7738c855364825561bf9d888d2ad53174e0ed10fd1f1b",
+  "schema_hash": "bcf4051fec5cc957e59a83708120a283144a8621eaebcf3acdc19b3baff031d1",
+  "raw_archive_path": "data/raw/amlsim/sample/20K_fanin200.tgz",
+  "source_type": "synthetic AMLSim sample",
+  "transaction_fields": [
+    "sourceNodeId",
+    "targetNodeId",
+    "value",
+    "time"
+  ],
+  "schema_header": "sourceNodeId,targetNodeId,value,time",
+  "nodes_count": 20000,
+  "transactions_count": 118250,
+  "patterns_count": 200,
+  "pattern_type": "fan-in",
+  "limitations": [
+    "relative integer time limitation",
+    "scenario/node labels only",
+    "no independent edge-level tri-state trace gold",
+    "detection/graph use only, not learned-tracing release truth"
+  ],
+  "intended_use": "detection/graph use only, not learned-tracing release truth"
+}
