@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from fincrime.data.artifacts import write_public_artifact
+from fincrime.data.provenance import sha256_file
+
+
+def test_public_artifact_excludes_labels_and_records_output_hash(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+            "scenario_id": ["hidden"],
+            "_aml_designations": ["sar"],
+        }
+    )
+    target = tmp_path / "public.parquet"
+    manifest = write_public_artifact(
+        frame=frame,
+        output_path=target,
+        source_id="amlsim-20k-fanin200",
+        parent_raw_sha256="a" * 64,
+        adapter_name="AMLSimSampleAdapter",
+        adapter_version="1.0",
+        conversion_parameters=(("prefix", "sample_"),),
+    )
+    assert manifest.row_count == 1
+    assert manifest.public_columns == ("edge_id", "source_id", "target_id", "amount", "event_time")
+    assert manifest.output_sha256 == sha256_file(target)
+
+    read_back = pl.read_parquet(target)
+    assert read_back.columns == ["edge_id", "source_id", "target_id", "amount", "event_time"]
+    assert "scenario_id" not in read_back.columns
+    assert "_aml_designations" not in read_back.columns
+
+
+def test_write_public_artifact_refuses_overwrite(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    target = tmp_path / "public.parquet"
+    write_public_artifact(
+        frame=frame,
+        output_path=target,
+        source_id="amlsim",
+        parent_raw_sha256="a" * 64,
+        adapter_name="adapter",
+        adapter_version="1.0",
+        conversion_parameters=(),
+    )
+    with pytest.raises(FileExistsError):
+        write_public_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            conversion_parameters=(),
+        )
+
+
+def test_write_public_artifact_rejects_missing_canonical_columns(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+        }
+    )
+    target = tmp_path / "public.parquet"
+    with pytest.raises(ValueError, match="canonical"):
+        write_public_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            conversion_parameters=(),
+        )
+
+
+def test_write_public_artifact_preserves_canonical_order(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "event_time": ["2026-01-01T00:00:00Z"],
+            "amount": [1.0],
+            "target_id": ["b"],
+            "source_id": ["a"],
+            "edge_id": ["e1"],
+        }
+    )
+    target = tmp_path / "public.parquet"
+    manifest = write_public_artifact(
+        frame=frame,
+        output_path=target,
+        source_id="amlsim",
+        parent_raw_sha256="a" * 64,
+        adapter_name="adapter",
+        adapter_version="1.0",
+        conversion_parameters=(),
+    )
+    read_back = pl.read_parquet(target)
+    assert read_back.columns == ["edge_id", "source_id", "target_id", "amount", "event_time"]
+    assert manifest.public_columns == ("edge_id", "source_id", "target_id", "amount", "event_time")
