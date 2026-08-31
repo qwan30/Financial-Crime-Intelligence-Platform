@@ -158,6 +158,22 @@ def test_missing_train_record_id_fails_clearly() -> None:
         audit_split_overlap(records, manifest)
 
 
+def test_manifest_id_mismatch_with_case_record_fails_clearly() -> None:
+    records = {
+        "train_alias": CaseRecord("different_case_id", "fan_in", 11, frozenset({"a"}), frozenset({"e1"})),
+    }
+    manifest = SplitManifest(
+        train_case_ids=("train_alias",),
+        validation_case_ids=(),
+        calibration_case_ids=(),
+        temporal_test_case_ids=(),
+        heldout_typology_case_ids=(),
+        unseen_generator_case_ids=(),
+    )
+    with pytest.raises(ValueError, match="Manifest case ID 'train_alias' does not match CaseRecord.case_id 'different_case_id'"):
+        audit_split_overlap(records, manifest)
+
+
 def test_immutability_of_case_record() -> None:
     record = CaseRecord("c1", "typology_a", 42, frozenset({"node1"}), frozenset({"edge1"}))
     with pytest.raises(FrozenInstanceError):

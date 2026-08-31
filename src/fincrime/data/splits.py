@@ -41,6 +41,11 @@ def audit_split_overlap(
     for case_id in (*train_ids, *non_train_ids):
         if case_id not in records:
             raise KeyError(f"Case record '{case_id}' specified in manifest was not found in records")
+        record = records[case_id]
+        if record.case_id != case_id:
+            raise ValueError(
+                f"Manifest case ID '{case_id}' does not match CaseRecord.case_id '{record.case_id}'"
+            )
 
     train_records = [records[cid] for cid in train_ids]
     non_train_records = [records[cid] for cid in non_train_ids]
