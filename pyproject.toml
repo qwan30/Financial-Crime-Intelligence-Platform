@@ -13,7 +13,10 @@ dependencies = [
 
 [dependency-groups]
 dev = ["hatchling==1.27.0", "pytest>=8.3,<9", "ruff>=0.11,<1", "mypy>=1.15,<2"]
-graph = ["torch>=2.7,<3", "torch-geometric>=2.6,<3"]
+graph = ["torch>=2.7,<=2.12.0", "torch-geometric>=2.6,<3", "pyg-lib"]
+
+[tool.uv]
+find-links = ["https://data.pyg.org/whl/torch-2.12.0+cpu.html"]
 
 [build-system]
 requires = ["hatchling==1.27.0"]
