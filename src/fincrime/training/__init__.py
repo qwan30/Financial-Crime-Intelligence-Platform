@@ -6,10 +6,16 @@ from fincrime.training.baselines import (
     fit_logistic,
     predict_scores,
 )
+from fincrime.training.gates import (
+    PromotionDecision,
+    promotion_decision,
+)
 
 __all__ = [
     "ProbabilityModel",
+    "PromotionDecision",
     "fit_lightgbm",
     "fit_logistic",
     "predict_scores",
+    "promotion_decision",
 ]
