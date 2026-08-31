@@ -12,7 +12,7 @@ from fincrime.tracing.rankers import (
 
 
 def test_unknown_edges_are_excluded_from_ranker_training() -> None:
-    labels = np.array([TraceLabel.RELEVANT, TraceLabel.UNKNOWN, TraceLabel.CONFIRMED_BENIGN])
+    labels = np.array([TraceLabel.RELEVANT, TraceLabel.UNKNOWN, TraceLabel.CONFIRMED_BENIGN], dtype=object)
     assert training_mask(labels).tolist() == [True, False, True]
 
 
@@ -69,3 +69,9 @@ def test_non_finite_x_fails_validation(bad_x: np.ndarray) -> None:
     labels = np.array([TraceLabel.RELEVANT], dtype=object)
     with pytest.raises(ValueError, match="finite|nan|inf"):
         fit_trace_ranker(bad_x, labels, seed=42)
+
+
+def test_invalid_label_type_fails_validation() -> None:
+    x = np.array([[1.0], [2.0]], dtype=np.float64)
+    with pytest.raises(TypeError, match="TraceLabel"):
+        fit_trace_ranker(x, ["RELEVANT", "UNKNOWN"], seed=42)  # type: ignore[arg-type]

@@ -9,13 +9,16 @@ from numpy.typing import NDArray
 from fincrime.contracts.manifests import TraceLabel
 
 
-def training_mask(labels: NDArray[np.object_] | Sequence[TraceLabel | str]) -> NDArray[np.bool_]:
+def training_mask(labels: Sequence[TraceLabel] | NDArray[np.object_]) -> NDArray[np.bool_]:
     """Exclude UNKNOWN labels from training mask so they are never treated as negative."""
-    return np.array([label != TraceLabel.UNKNOWN for label in labels], dtype=bool)
+    for label in labels:
+        if not isinstance(label, TraceLabel):
+            raise TypeError(f"All labels must be TraceLabel instances, got {type(label).__name__}")
+    return np.array([label is not TraceLabel.UNKNOWN for label in labels], dtype=bool)
 
 
 def fit_trace_ranker(
-    x: NDArray[np.float64], labels: NDArray[np.object_] | Sequence[TraceLabel | str], seed: int
+    x: NDArray[np.float64], labels: Sequence[TraceLabel] | NDArray[np.object_], seed: int
 ) -> lgb.LGBMRanker:
     """Fit a LightGBM LambdaRank model on known candidate edge features."""
     if type(seed) is not int:
@@ -39,7 +42,7 @@ def fit_trace_ranker(
         raise ValueError("At least one known label (RELEVANT or CONFIRMED_BENIGN) is required for training")
 
     y = np.array(
-        [1 if label == TraceLabel.RELEVANT else 0 for label, is_known in zip(labels_list, mask, strict=True) if is_known],
+        [1 if label is TraceLabel.RELEVANT else 0 for label, is_known in zip(labels_list, mask, strict=True) if is_known],
         dtype=np.int32,
     )
     model = lgb.LGBMRanker(objective="lambdarank", random_state=seed, verbosity=-1)
