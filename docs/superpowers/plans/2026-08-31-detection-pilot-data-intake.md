@@ -16,6 +16,9 @@
 - A capacity decision must be `READY` before any remote archive download or extraction; otherwise return `SKIPPED_BY_RESOURCE` without downloading.
 - AMLBench full archives are prohibited on the current disk; only a future, pinned, resource-admitted small slice may be acquired.
 - Public model frames contain only `edge_id`, `source_id`, `target_id`, `amount`, and `event_time`.
+- Raw rows are never silently coerced or dropped; accepted and rejected row counts must reconcile to the raw input count.
+- `isFraud`, `fraudStep`, scenario/case fields, source labels, and split masks are denied from public/model artifacts.
+- AMLSim 20K exact duplicates are reported but retained because it has no stable source transaction ID; outliers are profile-only.
 - AMLSim relative ticks require explicit synthetic epoch and duration and must never be described as source-observed calendar time.
 - `UNKNOWN` is never a negative; no pilot artifact may claim learned-tracing or Research Release evidence.
 - Every task follows RED → GREEN → REFACTOR and ends in a recoverable commit after `uv run pytest -q`, `uv run ruff check .`, `uv run mypy src`, and `git diff --check`.
@@ -421,8 +424,122 @@ git add src/fincrime/cli.py src/fincrime/data/pilot.py tests/data/test_pilot.py
 git commit -m "feat(data): emit detection pilot admission evidence"
 ```
 
+### Task 6: Produce source-quality evidence and restricted AMLSim labels
+
+**Files:**
+- Create: `src/fincrime/data/quality.py`
+- Create: `src/fincrime/data/labels.py`
+- Modify: `src/fincrime/data/tracebench.py`, `src/fincrime/data/artifacts.py`
+- Create: `tests/data/test_quality.py`, `tests/data/test_labels.py`
+
+**Interfaces:**
+- `profile_amlsim_rows(frame: pl.DataFrame, raw_sha256: str) -> QualityReport` returns immutable schema/profile, accepted/rejected/duplicate counts, and sorted reason counts.
+- `account_labels(nodes: pl.DataFrame) -> pl.DataFrame` returns exactly `account_id`, `is_fraud`, `label_provenance`.
+- `write_clean_artifact(...) -> DerivedArtifactManifest` writes accepted canonical rows once and includes the quality-report hash in `conversion_parameters`.
+
+- [ ] **Step 1: Write failing quality and label-isolation tests**
+
+```python
+import polars as pl
+
+from fincrime.data.labels import account_labels
+from fincrime.data.quality import profile_amlsim_rows
+from fincrime.data.tracebench import public_transactions
+
+
+def test_quality_counts_reconcile_and_duplicates_are_retained() -> None:
+    report = profile_amlsim_rows(
+        pl.DataFrame({"sourceNodeId": ["a", "a", ""], "targetNodeId": ["b", "b", "c"],
+                      "value": [1.0, 1.0, -1.0], "time": [1, 1, 2]}), "a" * 64,
+    )
+    assert (report.input_rows, report.accepted_rows, report.rejected_rows, report.duplicate_rows) == (3, 2, 1, 1)
+    assert report.input_rows == report.accepted_rows + report.rejected_rows
+
+
+def test_node_labels_cannot_enter_public_transactions() -> None:
+    labels = account_labels(pl.DataFrame({"nodeid": ["a"], "isFraud": [1], "fraudStep": [7]}))
+    assert labels.columns == ["account_id", "is_fraud", "label_provenance"]
+    public = public_transactions(pl.DataFrame({"edge_id": ["e"], "source_id": ["a"], "target_id": ["b"],
+                                                 "amount": [1.0], "event_time": ["2026-01-01T00:00:00Z"],
+                                                 "isFraud": [1], "fraudStep": [7]}))
+    assert {"isFraud", "fraudStep"}.isdisjoint(public.columns)
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_quality.py tests/data/test_labels.py -v`
+
+Expected: FAIL because the quality and label modules do not exist.
+
+- [ ] **Step 3: Implement the smallest source-specific cleaner**
+
+Define frozen `QualityReport` with source/raw hash/schema fingerprint/counts/reason counts. Reject only missing or blank IDs, non-finite/non-positive amounts, and null/negative/non-integer ticks into a reason-coded quarantine frame with raw row ordinal. Count exact raw-row duplicates without removing them; do not clip outliers. `account_labels` validates the three `nodes.csv` columns and preserves `fraudStep` only as `label_provenance`. Extend the existing `LABEL_DERIVED_COLUMNS` denylist before writing public artifacts.
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_quality.py tests/data/test_labels.py -v && uv run ruff check . && uv run mypy src`
+
+Expected: counts reconcile; accepted duplicate rows remain; public artifacts contain no source labels.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/quality.py src/fincrime/data/labels.py src/fincrime/data/tracebench.py src/fincrime/data/artifacts.py tests/data/test_quality.py tests/data/test_labels.py
+git commit -m "feat(data): add AMLSim quality and label isolation"
+```
+
+### Task 7: Gate source-specific temporal split evidence
+
+**Files:**
+- Modify: `src/fincrime/data/splits.py`
+- Create: `tests/data/test_temporal_splits.py`
+
+**Interfaces:**
+- `audit_temporal_evidence(source_id, ticks, cutoff_tick, embargo_ticks, train_entity_ids, test_entity_ids, train_edge_ids, test_edge_ids) -> SplitEvidence`.
+- `SplitEvidence.verdict` is `SAFE`, `NOT_EVALUABLE`, or `BLOCKED_DATA`.
+
+- [ ] **Step 1: Write failing split-evidence tests**
+
+```python
+from fincrime.data.splits import SplitVerdict, audit_temporal_evidence
+
+
+def test_missing_raw_ticks_is_not_evaluable() -> None:
+    result = audit_temporal_evidence("amlsim-20k", (), 10, 1, frozenset(), frozenset(), frozenset(), frozenset())
+    assert result.verdict is SplitVerdict.NOT_EVALUABLE
+
+
+def test_entity_overlap_or_embargo_event_blocks_split() -> None:
+    result = audit_temporal_evidence("amlsim-20k", (1, 11), 10, 1,
+                                     frozenset({"a"}), frozenset({"a"}), frozenset({"e1"}), frozenset({"e2"}))
+    assert result.verdict is SplitVerdict.BLOCKED_DATA
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_temporal_splits.py -v`
+
+Expected: FAIL because `SplitVerdict` and `audit_temporal_evidence` do not exist.
+
+- [ ] **Step 3: Implement evidence-only split gating**
+
+Use a frozen Pydantic `SplitEvidence`. Empty ticks return `NOT_EVALUABLE`; entity/edge overlap or any event in `(cutoff_tick, cutoff_tick + embargo_ticks]` returns `BLOCKED_DATA`; otherwise return `SAFE`. This gate records evidence only: it does not fabricate calendar times, create a split, or claim scenario/typology separation for AMLSim 20K.
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_temporal_splits.py -v && uv run ruff check . && uv run mypy src`
+
+Expected: unavailable time evidence is not promoted; overlap and embargo failures block the pilot.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/splits.py tests/data/test_temporal_splits.py
+git commit -m "feat(data): gate temporal split evidence"
+```
+
 ## Plan self-review
 
-- Spec coverage: Tasks 1–5 cover source records, capacity admission, safe extraction, public artifacts, and detection-only evidence. They intentionally exclude full AMLBench download, a source-specific AMLBench adapter, trace truth, learned-tracing claims, and release tagging.
+- Spec coverage: Tasks 1–7 cover source records, capacity admission, safe extraction, public artifacts, detection-only evidence, AMLSim quality/labels, and temporal split gating. They intentionally exclude full AMLBench download, trace truth, learned-tracing claims, and release tagging.
 - Completeness scan: every task has a concrete implementation and verification step. The AMLBench schema is deliberately not invented; Task 3 accepts only a named, verified member after real archive inspection.
 - Type consistency: every task uses `SourceManifest`, `DerivedArtifactManifest`, `CapacityDecision`, and the five-column public artifact contract defined in earlier tasks.
