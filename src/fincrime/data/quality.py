@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections import Counter
 from hashlib import sha256
+from typing import Self
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from fincrime.data.provenance import Hash, NonBlank, sha256_header
 
@@ -27,6 +28,28 @@ class QualityReport(BaseModel):
     rejected_rows: int = Field(ge=0)
     duplicate_rows: int = Field(ge=0)
     reason_counts: tuple[tuple[NonBlank, int], ...]
+
+    @model_validator(mode="after")
+    def _validate_invariants(self) -> Self:
+        if self.accepted_rows + self.rejected_rows != self.input_rows:
+            raise ValueError(
+                f"accepted_rows ({self.accepted_rows}) + rejected_rows ({self.rejected_rows}) "
+                f"must equal input_rows ({self.input_rows})"
+            )
+        if self.duplicate_rows > self.input_rows:
+            raise ValueError(
+                f"duplicate_rows ({self.duplicate_rows}) cannot exceed input_rows ({self.input_rows})"
+            )
+        total_reasons = 0
+        for reason, count in self.reason_counts:
+            if count < 0:
+                raise ValueError(f"reason count for {reason!r} must be non-negative, got {count}")
+            total_reasons += count
+        if total_reasons != self.rejected_rows:
+            raise ValueError(
+                f"sum of reason_counts ({total_reasons}) must equal rejected_rows ({self.rejected_rows})"
+            )
+        return self
 
     def report_sha256(self) -> str:
         return sha256(self.model_dump_json().encode("utf-8")).hexdigest()
@@ -109,14 +132,12 @@ def clean_amlsim_rows(
         .alias("reason_code")
     )
 
-    evaluated = (
-        frame.with_row_index("row_ordinal")
-        .with_columns(pl.col("row_ordinal").cast(pl.Int64), reason_expr)
+    evaluated = frame.with_row_index("row_ordinal").with_columns(
+        pl.col("row_ordinal").cast(pl.Int64), reason_expr
     )
 
-    accepted = (
-        evaluated.filter(pl.col("reason_code").is_null())
-        .drop(["row_ordinal", "reason_code"])
+    accepted = evaluated.filter(pl.col("reason_code").is_null()).drop(
+        ["row_ordinal", "reason_code"]
     )
     quarantine = evaluated.filter(pl.col("reason_code").is_not_null())
 

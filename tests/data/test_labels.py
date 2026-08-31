@@ -60,3 +60,14 @@ def test_account_labels_preserves_fraud_step_as_label_provenance() -> None:
     assert labels["account_id"].to_list() == ["acc_0", "acc_1"]
     assert labels["is_fraud"].to_list() == [0, 1]
     assert labels["label_provenance"].to_list() == ["-1", "42"]
+
+
+@pytest.mark.parametrize(
+    "invalid_fraud_value",
+    [0.5, 0.1, 0.9, 1.5, -0.5, 1.0001, -0.0001, "0.5", "1.2"],
+)
+def test_account_labels_rejects_fractional_is_fraud_values(invalid_fraud_value: object) -> None:
+    with pytest.raises(ValueError, match="isFraud"):
+        account_labels(
+            pl.DataFrame({"nodeid": ["a"], "isFraud": [invalid_fraud_value], "fraudStep": [1]})
+        )

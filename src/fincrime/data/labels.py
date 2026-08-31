@@ -22,8 +22,16 @@ def account_labels(nodes: pl.DataFrame) -> pl.DataFrame:
         if nodes["isFraud"].null_count() > 0:
             raise ValueError("isFraud must contain non-null 0 or 1 values")
 
+        fraud_float = nodes["isFraud"].cast(pl.Float64, strict=False)
         fraud_int = nodes["isFraud"].cast(pl.Int64, strict=False)
-        if fraud_int.null_count() > 0 or (~fraud_int.is_in([0, 1])).any():
+        if (
+            fraud_int.null_count() > 0
+            or fraud_float.null_count() > 0
+            or fraud_float.is_nan().any()
+            or fraud_float.is_infinite().any()
+            or (fraud_float != fraud_int.cast(pl.Float64)).any()
+            or (~fraud_int.is_in([0, 1])).any()
+        ):
             raise ValueError("isFraud must contain only 0 or 1")
 
     return nodes.select(

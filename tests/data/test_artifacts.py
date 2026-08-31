@@ -187,3 +187,150 @@ def test_write_clean_artifact_refuses_overwrite(tmp_path: Path) -> None:
             adapter_version="1.0",
             quality_report="c" * 64,
         )
+
+
+def test_write_clean_artifact_rejects_invalid_quality_report_string(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    target = tmp_path / "clean.parquet"
+    with pytest.raises(ValueError, match="quality_report"):
+        write_clean_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            quality_report="invalid-hex-sha256",
+        )
+
+
+def test_write_clean_artifact_rejects_invalid_quality_report_type(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    target = tmp_path / "clean.parquet"
+    with pytest.raises((TypeError, ValueError), match="quality_report"):
+        write_clean_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            quality_report=12345,  # type: ignore[arg-type]
+        )
+
+
+def test_write_clean_artifact_rejects_mismatched_report_source_id(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    report = QualityReport(
+        source_id="amlsim-different",
+        raw_sha256="a" * 64,
+        schema_sha256="b" * 64,
+        input_rows=1,
+        accepted_rows=1,
+        rejected_rows=0,
+        duplicate_rows=0,
+        reason_counts=(),
+    )
+    target = tmp_path / "clean.parquet"
+    with pytest.raises(ValueError, match="source_id"):
+        write_clean_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim-20k",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            quality_report=report,
+        )
+
+
+def test_write_clean_artifact_rejects_mismatched_report_parent_raw_sha256(tmp_path: Path) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    report = QualityReport(
+        source_id="amlsim-20k",
+        raw_sha256="a" * 64,
+        schema_sha256="b" * 64,
+        input_rows=1,
+        accepted_rows=1,
+        rejected_rows=0,
+        duplicate_rows=0,
+        reason_counts=(),
+    )
+    target = tmp_path / "clean.parquet"
+    with pytest.raises(ValueError, match="raw_sha256"):
+        write_clean_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim-20k",
+            parent_raw_sha256="b" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            quality_report=report,
+        )
+
+
+def test_write_clean_artifact_rejects_mismatched_accepted_rows_and_frame_height(
+    tmp_path: Path,
+) -> None:
+    frame = pl.DataFrame(
+        {
+            "edge_id": ["e1"],
+            "source_id": ["a"],
+            "target_id": ["b"],
+            "amount": [1.0],
+            "event_time": ["2026-01-01T00:00:00Z"],
+        }
+    )
+    report = QualityReport(
+        source_id="amlsim-20k",
+        raw_sha256="a" * 64,
+        schema_sha256="b" * 64,
+        input_rows=2,
+        accepted_rows=2,
+        rejected_rows=0,
+        duplicate_rows=0,
+        reason_counts=(),
+    )
+    target = tmp_path / "clean.parquet"
+    with pytest.raises(ValueError, match="accepted_rows"):
+        write_clean_artifact(
+            frame=frame,
+            output_path=target,
+            source_id="amlsim-20k",
+            parent_raw_sha256="a" * 64,
+            adapter_name="adapter",
+            adapter_version="1.0",
+            quality_report=report,
+        )

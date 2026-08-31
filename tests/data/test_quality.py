@@ -146,3 +146,59 @@ def test_quality_report_validation_and_immutability() -> None:
         report.input_rows = 10  # type: ignore[misc]
 
     assert len(report.report_sha256()) == 64
+
+
+def test_quality_report_rejects_row_count_mismatch() -> None:
+    with pytest.raises(ValidationError, match="accepted_rows.*rejected_rows.*input_rows"):
+        QualityReport(
+            source_id="amlsim-20k",
+            raw_sha256="a" * 64,
+            schema_sha256="b" * 64,
+            input_rows=3,
+            accepted_rows=1,
+            rejected_rows=1,
+            duplicate_rows=0,
+            reason_counts=(("missing_or_blank_identifier", 1),),
+        )
+
+
+def test_quality_report_rejects_duplicate_rows_exceeding_input_rows() -> None:
+    with pytest.raises(ValidationError, match="duplicate_rows.*cannot exceed input_rows"):
+        QualityReport(
+            source_id="amlsim-20k",
+            raw_sha256="a" * 64,
+            schema_sha256="b" * 64,
+            input_rows=2,
+            accepted_rows=2,
+            rejected_rows=0,
+            duplicate_rows=3,
+            reason_counts=(),
+        )
+
+
+def test_quality_report_rejects_negative_reason_count() -> None:
+    with pytest.raises(ValidationError, match="reason count.*must be non-negative"):
+        QualityReport(
+            source_id="amlsim-20k",
+            raw_sha256="a" * 64,
+            schema_sha256="b" * 64,
+            input_rows=1,
+            accepted_rows=1,
+            rejected_rows=0,
+            duplicate_rows=0,
+            reason_counts=(("missing_or_blank_identifier", -1),),
+        )
+
+
+def test_quality_report_rejects_reason_count_sum_mismatch_with_rejected_rows() -> None:
+    with pytest.raises(ValidationError, match="sum of reason_counts.*must equal rejected_rows"):
+        QualityReport(
+            source_id="amlsim-20k",
+            raw_sha256="a" * 64,
+            schema_sha256="b" * 64,
+            input_rows=3,
+            accepted_rows=1,
+            rejected_rows=2,
+            duplicate_rows=0,
+            reason_counts=(("missing_or_blank_identifier", 1),),
+        )
