@@ -1,0 +1,380 @@
+# Detection Pilot Data Intake Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make AMLSim and a future bounded AMLBench slice reproducible detection/graph pilot inputs, with executable provenance, capacity, extraction, public-artifact, and evidence gates.
+
+**Architecture:** Keep the existing immutable `DatasetManifest` contract unchanged. Add pilot-specific source and derived-artifact records, then route every source through capacity admission, checksum verification, safe extraction, source-specific canonicalization, public-field allowlisting, and evidence writing. AMLSim stays synthetic-relative detection/graph data; AMLBench acquisition is refused locally until its exact archive and resource preflight are admissible.
+
+**Tech Stack:** Python 3.12, stdlib `zipfile`/`hashlib`/`pathlib`, Pydantic 2, Polars, pytest, Ruff, MyPy.
+
+## Global Constraints
+
+- Raw and processed datasets stay under ignored `data/raw/` and `data/processed/`; never commit payloads.
+- All source and derived byte hashes are lowercase SHA-256 strings.
+- Use only HTTPS source URLs pinned by revision and checksum.
+- A capacity decision must be `READY` before any remote archive download or extraction; otherwise return `SKIPPED_BY_RESOURCE` without downloading.
+- AMLBench full archives are prohibited on the current disk; only a future, pinned, resource-admitted small slice may be acquired.
+- Public model frames contain only `edge_id`, `source_id`, `target_id`, `amount`, and `event_time`.
+- AMLSim relative ticks require explicit synthetic epoch and duration and must never be described as source-observed calendar time.
+- `UNKNOWN` is never a negative; no pilot artifact may claim learned-tracing or Research Release evidence.
+- Every task follows RED → GREEN → REFACTOR and ends in a recoverable commit after `uv run pytest -q`, `uv run ruff check .`, `uv run mypy src`, and `git diff --check`.
+
+---
+
+### Task 1: Define executable source and derived-artifact manifests
+
+**Files:**
+- Create: `src/fincrime/data/provenance.py`
+- Create: `tests/data/test_provenance.py`
+
+**Interfaces:**
+- Produces `SourceManifest`, `DerivedArtifactManifest`, `sha256_header(header: str) -> str`, and `sha256_file(path: Path) -> str`.
+- `SourceManifest` records source ID, HTTPS URL, revision, license, retrieval timestamp, raw hash, schema hash, extraction selector, intended use, prohibited claims, and limitations.
+- `DerivedArtifactManifest` records parent raw hash, adapter name/version, conversion parameters, output hash, row count, and public columns.
+
+- [ ] **Step 1: Write failing source-manifest tests**
+
+```python
+from datetime import UTC, datetime
+
+import pytest
+from pydantic import ValidationError
+
+from fincrime.data.provenance import SourceManifest
+
+
+def test_source_manifest_rejects_non_https_and_non_hash_values() -> None:
+    with pytest.raises(ValidationError):
+        SourceManifest(
+            source_id="amlsim-20k-fanin200",
+            source_url="http://example.invalid/data",
+            revision="7338a4b",
+            license="Apache-2.0",
+            retrieved_at=datetime(2026, 8, 31, tzinfo=UTC),
+            raw_sha256="not-a-hash",
+            schema_sha256="b" * 64,
+            extraction_selector="sample/20K_fanin200.tgz",
+            intended_use="detection_graph_pilot",
+            prohibited_claims=("learned_tracing",),
+            limitations=("synthetic",),
+        )
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_provenance.py -v`
+
+Expected: FAIL with `ModuleNotFoundError: No module named 'fincrime.data.provenance'`.
+
+- [ ] **Step 3: Implement immutable provenance records**
+
+```python
+from datetime import datetime
+from hashlib import sha256
+from pathlib import Path
+from typing import Annotated
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, StringConstraints
+
+NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+Hash = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+
+
+class SourceManifest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    source_id: NonBlank
+    source_url: HttpUrl
+    revision: NonBlank
+    license: NonBlank
+    retrieved_at: AwareDatetime
+    raw_sha256: Hash
+    schema_sha256: Hash
+    extraction_selector: NonBlank
+    intended_use: NonBlank
+    prohibited_claims: tuple[NonBlank, ...]
+    limitations: tuple[NonBlank, ...]
+
+
+class DerivedArtifactManifest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    source_id: NonBlank
+    parent_raw_sha256: Hash
+    adapter_name: NonBlank
+    adapter_version: NonBlank
+    conversion_parameters: tuple[tuple[NonBlank, NonBlank], ...]
+    output_sha256: Hash
+    row_count: int = Field(ge=0)
+    public_columns: tuple[NonBlank, ...]
+
+
+def sha256_header(header: str) -> str:
+    return sha256(header.encode("utf-8")).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+```
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_provenance.py -v && uv run mypy src`
+
+Expected: source records reject invalid URLs/hashes and are immutable.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/provenance.py tests/data/test_provenance.py
+git commit -m "feat(data): record immutable pilot provenance"
+```
+
+### Task 2: Add capacity admission before acquisition
+
+**Files:**
+- Create: `src/fincrime/data/capacity.py`
+- Create: `tests/data/test_capacity.py`
+
+**Interfaces:**
+- Consumes `disk_free_bytes`, `archive_bytes`, `extraction_bytes`, `processed_bytes`, `temporary_bytes`, and `safety_headroom_bytes`.
+- Produces `CapacityDecision(status: Literal["READY", "SKIPPED_BY_RESOURCE"], required_bytes: int, available_bytes: int)`.
+
+- [ ] **Step 1: Write failing capacity test**
+
+```python
+from fincrime.data.capacity import capacity_decision
+
+
+def test_capacity_decision_skips_oversized_archive_before_download() -> None:
+    result = capacity_decision(
+        disk_free_bytes=9_000,
+        archive_bytes=7_000,
+        extraction_bytes=7_000,
+        processed_bytes=2_000,
+        temporary_bytes=1_000,
+        safety_headroom_bytes=1_000,
+    )
+    assert result.status == "SKIPPED_BY_RESOURCE"
+    assert result.required_bytes == 18_000
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_capacity.py -v`
+
+Expected: FAIL with missing module.
+
+- [ ] **Step 3: Implement the pure capacity gate**
+
+```python
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class CapacityDecision(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    status: Literal["READY", "SKIPPED_BY_RESOURCE"]
+    required_bytes: int = Field(ge=0)
+    available_bytes: int = Field(ge=0)
+
+
+def capacity_decision(
+    *, disk_free_bytes: int, archive_bytes: int, extraction_bytes: int,
+    processed_bytes: int, temporary_bytes: int, safety_headroom_bytes: int,
+) -> CapacityDecision:
+    values = (disk_free_bytes, archive_bytes, extraction_bytes, processed_bytes,
+              temporary_bytes, safety_headroom_bytes)
+    if any(value < 0 for value in values):
+        raise ValueError("capacity values must be non-negative")
+    required = archive_bytes + extraction_bytes + processed_bytes + temporary_bytes + safety_headroom_bytes
+    return CapacityDecision(
+        status="READY" if disk_free_bytes >= required else "SKIPPED_BY_RESOURCE",
+        required_bytes=required,
+        available_bytes=disk_free_bytes,
+    )
+```
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_capacity.py -v`
+
+Expected: `READY` and `SKIPPED_BY_RESOURCE` cases pass without filesystem writes.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/capacity.py tests/data/test_capacity.py
+git commit -m "feat(data): gate acquisition on local capacity"
+```
+
+### Task 3: Verify archives and safely extract a selected member
+
+**Files:**
+- Create: `src/fincrime/data/archive.py`
+- Create: `tests/data/test_archive.py`
+
+**Interfaces:**
+- Consumes a local ZIP archive, expected archive SHA-256, allowed member names, and byte/file-count caps.
+- Produces `extract_verified_members(...) -> tuple[Path, ...]`.
+- Rejects checksum mismatch, absolute/traversal members, unexpected members, file-count overflow, and extracted-byte overflow before writing outside `destination`.
+
+- [ ] **Step 1: Write failing traversal test**
+
+```python
+from hashlib import sha256
+import zipfile
+from pathlib import Path
+
+import pytest
+
+from fincrime.data.archive import extract_verified_members
+
+
+def test_extract_rejects_path_traversal_member(tmp_path: Path) -> None:
+    archive = tmp_path / "source.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("../escape.csv", "x")
+    with pytest.raises(ValueError, match="unsafe archive member"):
+        extract_verified_members(
+            archive,
+            sha256(archive.read_bytes()).hexdigest(),
+            {"transactions.csv"},
+            tmp_path / "out",
+            1,
+            1024,
+        )
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_archive.py -v`
+
+Expected: FAIL with missing module.
+
+- [ ] **Step 3: Implement safe member validation**
+
+Implement `extract_verified_members` with `zipfile.ZipFile`, `PurePosixPath`, exact checksum comparison using `sha256_file`, `member.is_absolute()`/`".." in member.parts` rejection, and explicit limits before `ZipFile.extract`. Resolve every output and require it to remain under the resolved destination.
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_archive.py -v && uv run ruff check src tests`
+
+Expected: traversal, checksum, unexpected-member, and quota fixtures fail closed; a permitted tiny member extracts.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/archive.py tests/data/test_archive.py
+git commit -m "feat(data): safely extract verified source members"
+```
+
+### Task 4: Freeze public pilot artifacts and lineage
+
+**Files:**
+- Create: `src/fincrime/data/artifacts.py`
+- Create: `tests/data/test_artifacts.py`
+
+**Interfaces:**
+- Consumes a canonical Polars frame, `SourceManifest`, adapter name/version, and conversion parameters.
+- Produces an ignored Parquet artifact and `DerivedArtifactManifest`.
+- Public artifacts always call existing `public_transactions(frame)` before writing.
+
+- [ ] **Step 1: Write failing lineage test**
+
+```python
+from pathlib import Path
+
+import polars as pl
+
+from fincrime.data.artifacts import write_public_artifact
+
+
+def test_public_artifact_excludes_labels_and_records_output_hash(tmp_path: Path) -> None:
+    frame = pl.DataFrame({"edge_id": ["e1"], "source_id": ["a"], "target_id": ["b"],
+                          "amount": [1.0], "event_time": ["2026-01-01T00:00:00Z"],
+                          "scenario_id": ["hidden"]})
+    manifest = write_public_artifact(frame, tmp_path / "public.parquet", "amlsim", "raw", "adapter", "1", ())
+    assert manifest.row_count == 1
+    assert manifest.public_columns == ("edge_id", "source_id", "target_id", "amount", "event_time")
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_artifacts.py -v`
+
+Expected: FAIL with missing module.
+
+- [ ] **Step 3: Implement one-write public artifact creation**
+
+Implement `write_public_artifact` to reject an existing output path, apply `public_transactions`, write Parquet once, hash the written file with `sha256_file`, and return `DerivedArtifactManifest`. Preserve `CANONICAL_COLUMNS` order, and reject frames that cannot supply all five canonical columns.
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_artifacts.py -v && uv run mypy src`
+
+Expected: label-derived and unknown columns are absent from the Parquet artifact; the manifest hashes its exact bytes.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/data/artifacts.py tests/data/test_artifacts.py
+git commit -m "feat(data): freeze public pilot artifacts"
+```
+
+### Task 5: Add pilot evidence and source-admission CLI
+
+**Files:**
+- Modify: `src/fincrime/cli.py`
+- Create: `src/fincrime/data/pilot.py`
+- Create: `tests/data/test_pilot.py`
+
+**Interfaces:**
+- `pilot_admission(...) -> PilotEvidence` combines capacity decision, source manifest, and optional derived artifact manifest.
+- CLI command: `pilot-admission --workspace PATH --archive-bytes N --extraction-bytes N --processed-bytes N --temporary-bytes N --headroom-bytes N`.
+- `PilotEvidence.verdict` is exactly `detection_only`; it never reports a research release or tracing approval.
+
+- [ ] **Step 1: Write failing CLI/evidence test**
+
+```python
+from fincrime.data.pilot import pilot_admission
+
+
+def test_insufficient_capacity_returns_detection_only_skipped_evidence() -> None:
+    evidence = pilot_admission("amlbench-slice", 1, 9, 9, 1, 1)
+    assert evidence.capacity.status == "SKIPPED_BY_RESOURCE"
+    assert evidence.verdict == "detection_only"
+```
+
+- [ ] **Step 2: Verify RED**
+
+Run: `uv run pytest tests/data/test_pilot.py -v`
+
+Expected: FAIL with missing module.
+
+- [ ] **Step 3: Implement evidence without acquisition side effects**
+
+Implement immutable `PilotEvidence` with source ID, `CapacityDecision`, and `verdict: Literal["detection_only"]`. The CLI serializes `PilotEvidence.model_dump_json(indent=2)` and performs no download or extraction. Add parser arguments exactly matching the interface.
+
+- [ ] **Step 4: Verify GREEN**
+
+Run: `uv run pytest tests/data/test_pilot.py -v && uv run python -m fincrime.cli pilot-admission --workspace . --archive-bytes 7560000000 --extraction-bytes 7560000000 --processed-bytes 2000000000 --temporary-bytes 1000000000 --headroom-bytes 1000000000`
+
+Expected: test passes; the local command returns `SKIPPED_BY_RESOURCE` and `detection_only` without downloading AMLBench.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add src/fincrime/cli.py src/fincrime/data/pilot.py tests/data/test_pilot.py
+git commit -m "feat(data): emit detection pilot admission evidence"
+```
+
+## Plan self-review
+
+- Spec coverage: Tasks 1–5 cover source records, capacity admission, safe extraction, public artifacts, and detection-only evidence. They intentionally exclude full AMLBench download, a source-specific AMLBench adapter, trace truth, learned-tracing claims, and release tagging.
+- Completeness scan: every task has a concrete implementation and verification step. The AMLBench schema is deliberately not invented; Task 3 accepts only a named, verified member after real archive inspection.
+- Type consistency: every task uses `SourceManifest`, `DerivedArtifactManifest`, `CapacityDecision`, and the five-column public artifact contract defined in earlier tasks.
