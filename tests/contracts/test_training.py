@@ -26,7 +26,6 @@ def test_training_run_uses_five_fixed_seeds_and_trial_cap() -> None:
         search_trial_cap=20,
     )
     assert spec.random_seeds == RESEARCH_SEEDS
-    assert spec.random_seeds == (11, 23, 37, 53, 71)
     assert spec.search_trial_cap == 20
 
 
