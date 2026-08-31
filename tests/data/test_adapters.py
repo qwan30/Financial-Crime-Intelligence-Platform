@@ -1,11 +1,15 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from fincrime.data.adapters import AMLBenchAdapter, AMLSimAdapter
+from fincrime.data.adapters import (
+    AMLBenchAdapter,
+    AMLSimAdapter,
+    AMLSimSampleAdapter,
+)
 
 
 def test_amlsim_adapter_maps_canonical_columns() -> None:
@@ -260,3 +264,134 @@ def test_adapter_rejection_does_not_leak_row_content() -> None:
     err_msg = str(exc_info.value)
     assert sensitive_source not in err_msg
     assert sensitive_target not in err_msg
+
+
+def test_amlsim_sample_adapter_maps_canonical_columns() -> None:
+    raw = pl.DataFrame(
+        {
+            "sourceNodeId": [100, 200],
+            "targetNodeId": [300, 400],
+            "value": [10.5, 20.0],
+            "time": [0, 2],
+        }
+    )
+    adapter = AMLSimSampleAdapter(
+        observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+        tick_duration=timedelta(days=1),
+        edge_id_prefix="sample_tx_",
+    )
+    result = adapter.transactions(raw)
+    expected = pl.DataFrame(
+        {
+            "edge_id": ["sample_tx_0", "sample_tx_1"],
+            "source_id": ["100", "200"],
+            "target_id": ["300", "400"],
+            "amount": [10.5, 20.0],
+            "event_time": [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 3, tzinfo=UTC)],
+        }
+    )
+    assert result.columns == [
+        "edge_id",
+        "source_id",
+        "target_id",
+        "amount",
+        "event_time",
+    ]
+    assert_frame_equal(result, expected)
+
+
+def test_amlsim_sample_adapter_rejects_naive_observation_start() -> None:
+    with pytest.raises(ValueError, match="timezone-aware"):
+        AMLSimSampleAdapter(
+            observation_start=datetime(2026, 1, 1),  # noqa: DTZ001
+            tick_duration=timedelta(days=1),
+            edge_id_prefix="tx_",
+        )
+
+
+@pytest.mark.parametrize("bad_duration", [timedelta(0), timedelta(seconds=-1)])
+def test_amlsim_sample_adapter_rejects_non_positive_tick_duration(bad_duration: timedelta) -> None:
+    with pytest.raises(ValueError, match="strictly positive"):
+        AMLSimSampleAdapter(
+            observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+            tick_duration=bad_duration,
+            edge_id_prefix="tx_",
+        )
+
+
+@pytest.mark.parametrize("bad_prefix", ["", "   "])
+def test_amlsim_sample_adapter_rejects_blank_edge_prefix(bad_prefix: str) -> None:
+    with pytest.raises(ValueError, match="non-blank string"):
+        AMLSimSampleAdapter(
+            observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+            tick_duration=timedelta(days=1),
+            edge_id_prefix=bad_prefix,
+        )
+
+
+def test_amlsim_sample_adapter_rejects_missing_columns() -> None:
+    adapter = AMLSimSampleAdapter(
+        observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+        tick_duration=timedelta(days=1),
+        edge_id_prefix="tx_",
+    )
+    with pytest.raises(ValueError, match="missing source columns"):
+        adapter.transactions(pl.DataFrame({"sourceNodeId": [1]}))
+
+
+@pytest.mark.parametrize("bad_value", [-1.0, 0.0, float("nan"), float("inf")])
+def test_amlsim_sample_adapter_rejects_non_positive_or_non_finite_values(bad_value: float) -> None:
+    adapter = AMLSimSampleAdapter(
+        observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+        tick_duration=timedelta(days=1),
+        edge_id_prefix="tx_",
+    )
+    raw = pl.DataFrame(
+        {
+            "sourceNodeId": [1],
+            "targetNodeId": [2],
+            "value": [bad_value],
+            "time": [0],
+        }
+    )
+    with pytest.raises(ValueError, match="amount|value|strictly positive"):
+        adapter.transactions(raw)
+
+
+@pytest.mark.parametrize("bad_time", [-1, 1.5])
+def test_amlsim_sample_adapter_rejects_negative_or_non_integer_ticks(bad_time: Any) -> None:
+    adapter = AMLSimSampleAdapter(
+        observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+        tick_duration=timedelta(days=1),
+        edge_id_prefix="tx_",
+    )
+    raw = pl.DataFrame(
+        {
+            "sourceNodeId": [1],
+            "targetNodeId": [2],
+            "value": [10.0],
+            "time": [bad_time],
+        }
+    )
+    with pytest.raises(ValueError, match="relative ticks|integer"):
+        adapter.transactions(raw)
+
+
+def test_amlsim_sample_adapter_rejection_does_not_leak_row_content() -> None:
+    sensitive_node = "SECRET_NODE_9999"
+    adapter = AMLSimSampleAdapter(
+        observation_start=datetime(2026, 1, 1, tzinfo=UTC),
+        tick_duration=timedelta(days=1),
+        edge_id_prefix="tx_",
+    )
+    raw = pl.DataFrame(
+        {
+            "sourceNodeId": [sensitive_node],
+            "targetNodeId": ["target_node"],
+            "value": [-100.0],
+            "time": [0],
+        }
+    )
+    with pytest.raises(ValueError) as exc_info:
+        adapter.transactions(raw)
+    assert sensitive_node not in str(exc_info.value)

@@ -18,6 +18,10 @@
   "transactions_count": 118250,
   "patterns_count": 200,
   "pattern_type": "fan-in",
+  "observation_model": {
+    "relative_time_ticks": "nonnegative integer ticks",
+    "calendar_time_provenance": "caller-supplied synthetic epoch and tick duration; non-source-provenance calendar time"
+  },
   "limitations": [
     "relative integer time limitation",
     "scenario/node labels only",
