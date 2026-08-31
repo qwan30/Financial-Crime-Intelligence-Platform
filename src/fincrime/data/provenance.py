@@ -59,8 +59,11 @@ def sha256_header(header: str) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    try:
+        digest = sha256()
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except Exception as err:
+        raise OSError("failed to read file for hashing") from err
