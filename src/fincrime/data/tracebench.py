@@ -11,6 +11,11 @@ LABEL_DERIVED_COLUMNS = (
     "split_mask",
     "In_Scenario",
     "analyst_disposition",
+    "isFraud",
+    "fraudStep",
+    "is_fraud",
+    "fraud_step",
+    "label_provenance",
 )
 
 _PUBLIC_TRANSACTION_COLUMNS = frozenset(
