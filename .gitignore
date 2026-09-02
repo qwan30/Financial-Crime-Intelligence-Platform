@@ -12,6 +12,7 @@ mlruns/
 .env
 .env.*
 !.env.example
+*.tsbuildinfo
 node_modules/
 dist/
 test-results/
