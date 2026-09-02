@@ -29,9 +29,12 @@ The implemented architecture is organized into three decoupled operating lanes:
 
 [![Implemented System Architecture](docs/architecture/archify/implemented-system.svg)](docs/architecture/archify/implemented-system.html)
 
-*Click the diagram above or open the [Interactive System Architecture Diagram](docs/architecture/archify/implemented-system.html) to explore the live standalone app with **trace motion animation** (live data particles), interactive guided story chapters, component spotlighting, and dark/light theme toggling.*
+> 🎬 **Interactive & Motion Previews:**
+> - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/implemented-system.html) — Live canvas with zoom/pan, chapter navigation, component spotlighting, and dark/light theme switching.
+> - 🎥 [**Watch Trace Motion Video (WebM)**](docs/architecture/archify/implemented-system.webm) — 6-second recording illustrating continuous particle data flow across all three operating lanes.
 
 ---
+
 ## Investigation & Adjudication Workflow
 
 The forensic workflow bridges automated graph intelligence and human analyst oversight:
@@ -42,9 +45,12 @@ The forensic workflow bridges automated graph intelligence and human analyst ove
 
 [![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.svg)](docs/architecture/archify/investigation-workflow.html)
 
-*Click the diagram above or open the [Interactive Investigation Workflow Diagram](docs/architecture/archify/investigation-workflow.html) to step through animated state transitions, trace prompt/evidence flows, inspect fail-closed branches, and explore interactive focus views.*
+> 🎬 **Interactive & Motion Previews:**
+> - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/investigation-workflow.html) — Step through animated state transitions, trace prompt/evidence flows, and inspect fail-closed branches.
+> - 🎥 [**Watch Workflow Animation Video (WebM)**](docs/architecture/archify/investigation-workflow.webm) — 6-second motion capture detailing the end-to-end hydration, guarded reasoning, and feedback cycle.
 
 ---
+
 ## Implemented Capabilities
 
 | Subsystem | Components / Modules | Implemented Capability |
