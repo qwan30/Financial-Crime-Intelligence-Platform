@@ -10,6 +10,8 @@ dependencies = [
   "lightgbm>=4.6,<5",
   "networkx>=3.4,<4",
   "httpx>=0.28,<1",
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
 ]
 
 [dependency-groups]
@@ -28,8 +30,8 @@ packages = ["src/fincrime"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src", "."]
 addopts = "-q"
-
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -37,7 +39,7 @@ target-version = "py312"
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["fincrime"]
+packages = ["fincrime", "apps"]
 
 [[tool.mypy.overrides]]
 module = ["torch.*", "torch_geometric.*"]
