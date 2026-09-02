@@ -37,3 +37,13 @@ target-version = "py312"
 python_version = "3.12"
 strict = true
 packages = ["fincrime"]
+
+[[tool.mypy.overrides]]
+module = ["torch.*", "torch_geometric.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[[tool.mypy.overrides]]
+module = "fincrime.training.graphsage"
+disallow_subclassing_any = false
+warn_unused_ignores = false
