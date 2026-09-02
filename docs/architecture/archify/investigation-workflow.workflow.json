@@ -1,0 +1,258 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Investigation & Adjudication Workflow",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "output": "investigation-workflow.html",
+    "views": [
+      {
+        "id": "workbench-hydration",
+        "label": "Workbench Hydration",
+        "focus": ["analyst_open", "route_workbench", "load_case_ev", "traverse_graph", "render_ui"],
+        "note": "Follow GET /cases/{case_id}/workbench from analyst UI through in-memory state hydration."
+      },
+      {
+        "id": "guarded-hypothesis",
+        "label": "Guarded Hypothesis Flow",
+        "focus": ["load_case_ev", "deepseek_gen", "citation_val", "render_ui"],
+        "note": "Trace fail-closed DeepSeek prompt assembly from case evidence and citation validation."
+      },
+      {
+        "id": "adjudication-feedback",
+        "label": "Adjudication & Feedback",
+        "focus": ["render_ui", "submit_feedback", "append_feedback"],
+        "note": "Follow analyst disposition decision to idempotent feedback storage."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "ui",
+      "label": "Investigator Web (UI)"
+    },
+    {
+      "id": "api_stores",
+      "label": "Case API & In-Memory Repositories"
+    },
+    {
+      "id": "agent",
+      "label": "Guarded DeepSeek Pipeline",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase_hydration",
+      "label": "Case Hydration",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "phase_investigation",
+      "label": "Guarded Reasoning",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "phase_adjudication",
+      "label": "Analyst Feedback",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "default"
+    }
+  ],
+  "mainPath": [
+    "analyst_open",
+    "route_workbench",
+    "load_case_ev",
+    "deepseek_gen",
+    "citation_val",
+    "render_ui",
+    "submit_feedback",
+    "append_feedback"
+  ],
+  "nodes": [
+    {
+      "id": "analyst_open",
+      "lane": "ui",
+      "col": 0,
+      "type": "frontend",
+      "label": "Open Case",
+      "sublabel": "Select Case",
+      "width": 120
+    },
+    {
+      "id": "render_ui",
+      "lane": "ui",
+      "col": 4,
+      "type": "frontend",
+      "label": "Workbench View",
+      "sublabel": "Render Claims",
+      "tag": "Cytoscape",
+      "width": 136
+    },
+    {
+      "id": "submit_feedback",
+      "lane": "ui",
+      "col": 5,
+      "type": "frontend",
+      "label": "Analyst Decision",
+      "sublabel": "Disposition",
+      "tag": "Adjudication",
+      "width": 136
+    },
+    {
+      "id": "route_workbench",
+      "lane": "api_stores",
+      "col": 1,
+      "type": "backend",
+      "label": "GET /cases/{case_id}/workbench",
+      "sublabel": "Hydration Route",
+      "tag": "FastAPI",
+      "width": 216
+    },
+    {
+      "id": "load_case_ev",
+      "lane": "api_stores",
+      "col": 2,
+      "type": "database",
+      "label": "Case & Evidence",
+      "sublabel": "Snapshot Store",
+      "tag": "In-Memory",
+      "width": 136
+    },
+    {
+      "id": "traverse_graph",
+      "lane": "api_stores",
+      "col": 3,
+      "type": "database",
+      "label": "Trace Graph",
+      "sublabel": "Subgraph Traversal",
+      "tag": "get_fund_trace",
+      "width": 136
+    },
+    {
+      "id": "append_feedback",
+      "lane": "api_stores",
+      "col": 5,
+      "type": "backend",
+      "label": "POST /cases/{case_id}/feedback",
+      "sublabel": "Append Event",
+      "tag": "CaseService",
+      "width": 216
+    },
+    {
+      "id": "deepseek_gen",
+      "lane": "agent",
+      "col": 3,
+      "type": "security",
+      "label": "DeepSeek Reasoner",
+      "sublabel": "Budgeted Model",
+      "tag": "Fail-Closed",
+      "width": 136
+    },
+    {
+      "id": "citation_val",
+      "lane": "agent",
+      "col": 4,
+      "type": "security",
+      "label": "Validate Citations",
+      "sublabel": "Evidence Check",
+      "tag": "Fail-Closed",
+      "width": 136
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-open-route",
+      "from": "analyst_open",
+      "to": "route_workbench",
+      "label": "fetch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-route-stores",
+      "from": "route_workbench",
+      "to": "load_case_ev",
+      "label": "snapshot"
+    },
+    {
+      "id": "edge-stores-prompt",
+      "from": "load_case_ev",
+      "to": "deepseek_gen",
+      "label": "evidence prompt",
+      "variant": "security"
+    },
+    {
+      "id": "edge-stores-graph",
+      "from": "load_case_ev",
+      "to": "traverse_graph",
+      "label": "trace lookup",
+      "role": "branch"
+    },
+    {
+      "id": "edge-graph-ui",
+      "from": "traverse_graph",
+      "to": "render_ui",
+      "label": "trace graph",
+      "role": "branch"
+    },
+    {
+      "id": "edge-gen-citation",
+      "from": "deepseek_gen",
+      "to": "citation_val",
+      "label": "claims",
+      "variant": "security"
+    },
+    {
+      "id": "edge-citation-ui",
+      "from": "citation_val",
+      "to": "render_ui",
+      "label": "verified",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-ui-decision",
+      "from": "render_ui",
+      "to": "submit_feedback",
+      "label": "review"
+    },
+    {
+      "id": "edge-decision-api",
+      "from": "submit_feedback",
+      "to": "append_feedback",
+      "label": "submit",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Hydration Contract",
+      "items": [
+        "GET /cases/{case_id}/workbench retrieves case snapshot, evidence items, and trace graph",
+        "In-memory, lock-protected CaseService, EvidenceStore, and GraphRepo provide local reads"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Guarded Hypothesis Flow",
+      "items": [
+        "DeepSeek agent execution is budgeted, optional, and fails closed in LLM_OFF mode",
+        "Every generated material claim must cite evidence IDs already attached to the case"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Analyst Feedback",
+      "items": [
+        "Analyst reviews graph, evidence items, and hypothesis claims in React workbench",
+        "POST /cases/{case_id}/feedback records disposition and justification with idempotency"
+      ]
+    }
+  ]
+}
