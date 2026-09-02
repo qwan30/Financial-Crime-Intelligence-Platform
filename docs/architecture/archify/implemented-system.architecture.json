@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Implemented System Architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "implemented-system.html",
+    "views": [
+      {
+        "id": "investigator-flow",
+        "label": "Investigator Workbench & API",
+        "focus": ["investigator_web", "case_api", "inmemory_stores", "guarded_deepseek"],
+        "note": "Hydrate cases and validate hypothesis claims through in-memory stores and fail-closed AI."
+      },
+      {
+        "id": "streaming-parity",
+        "label": "Streaming Replay & Parity",
+        "focus": ["quarantine_store", "replay_engine", "replay_state", "parity_engine"],
+        "note": "Replay broker records with coordinate deduplication and verify dual feature parity."
+      },
+      {
+        "id": "research-release",
+        "label": "Research Baselines & Release",
+        "focus": ["training_runner", "advanced_gate", "release_manifest"],
+        "note": "Enforce baseline gains before advanced GNN research and produce verified release manifests."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "training_runner",
+      "type": "backend",
+      "label": "Training Runner",
+      "sublabel": "Tabular & GraphSAGE Baselines",
+      "tag": "fincrime.training",
+      "pos": [60, 60],
+      "size": [170, 56]
+    },
+    {
+      "id": "advanced_gate",
+      "type": "security",
+      "label": "Advanced Model Gate",
+      "sublabel": "Empirical Gain Gate (HGT/TGN)",
+      "tag": "JUSTIFIED_NULL",
+      "pos": [350, 60],
+      "size": [170, 56]
+    },
+    {
+      "id": "release_manifest",
+      "type": "database",
+      "label": "Release Manifest",
+      "sublabel": "SHA-256 Artifact Inventory",
+      "tag": "fincrime.release",
+      "pos": [640, 60],
+      "size": [170, 56]
+    },
+    {
+      "id": "investigator_web",
+      "type": "frontend",
+      "label": "Investigator Workbench",
+      "sublabel": "React + Cytoscape Graph UI",
+      "tag": "apps/investigator-web",
+      "pos": [60, 180],
+      "size": [170, 56]
+    },
+    {
+      "id": "case_api",
+      "type": "backend",
+      "label": "Case API",
+      "sublabel": "FastAPI REST Service (:8000)",
+      "tag": "apps/case_api",
+      "pos": [350, 180],
+      "size": [170, 56]
+    },
+    {
+      "id": "inmemory_stores",
+      "type": "database",
+      "label": "In-Memory Stores",
+      "sublabel": "Case, Evidence & Graph Repos",
+      "tag": "Thread-Safe Dicts",
+      "pos": [640, 180],
+      "size": [170, 56]
+    },
+    {
+      "id": "guarded_deepseek",
+      "type": "security",
+      "label": "Guarded DeepSeek",
+      "sublabel": "Optional Fail-Closed Agent",
+      "tag": "BudgetController",
+      "pos": [930, 180],
+      "size": [170, 56]
+    },
+    {
+      "id": "quarantine_store",
+      "type": "database",
+      "label": "Quarantine Store",
+      "sublabel": "Durable JSONL Dead-Letter",
+      "tag": "QuarantineStore",
+      "pos": [60, 300],
+      "size": [170, 56]
+    },
+    {
+      "id": "replay_engine",
+      "type": "backend",
+      "label": "Replay Engine",
+      "sublabel": "Broker Stream & Deduplication",
+      "tag": "fincrime.streaming",
+      "pos": [350, 300],
+      "size": [170, 56]
+    },
+    {
+      "id": "replay_state",
+      "type": "database",
+      "label": "Replay State",
+      "sublabel": "In-Memory Offsets & Events",
+      "tag": "ReplayState",
+      "pos": [640, 300],
+      "size": [170, 56]
+    },
+    {
+      "id": "parity_engine",
+      "type": "backend",
+      "label": "Parity Engine",
+      "sublabel": "Dual Online/Offline Scoring",
+      "tag": "Point-in-Time",
+      "pos": [930, 300],
+      "size": [170, 56]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Offline Research & Release Evidence",
+      "wraps": ["training_runner", "advanced_gate", "release_manifest"]
+    },
+    {
+      "kind": "region",
+      "label": "Investigator Workbench & Guarded Agent",
+      "wraps": ["investigator_web", "case_api", "inmemory_stores", "guarded_deepseek"]
+    },
+    {
+      "kind": "region",
+      "label": "Streaming Replay, Quarantine & Parity",
+      "wraps": ["quarantine_store", "replay_engine", "replay_state", "parity_engine"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-runner-gate",
+      "from": "training_runner",
+      "to": "advanced_gate",
+      "label": "baseline deltas"
+    },
+    {
+      "id": "conn-gate-manifest",
+      "from": "advanced_gate",
+      "to": "release_manifest",
+      "label": "gating decision"
+    },
+    {
+      "id": "conn-web-api",
+      "from": "investigator_web",
+      "to": "case_api",
+      "label": "workbench & feedback",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn-api-stores",
+      "from": "case_api",
+      "to": "inmemory_stores",
+      "label": "hydrate & append"
+    },
+    {
+      "id": "conn-stores-deepseek",
+      "from": "inmemory_stores",
+      "to": "guarded_deepseek",
+      "label": "verify citations",
+      "variant": "security"
+    },
+    {
+      "id": "conn-replay-quarantine",
+      "from": "replay_engine",
+      "to": "quarantine_store",
+      "label": "divert invalid",
+      "variant": "security"
+    },
+    {
+      "id": "conn-replay-state",
+      "from": "replay_engine",
+      "to": "replay_state",
+      "label": "commit offsets"
+    },
+    {
+      "id": "conn-state-parity",
+      "from": "replay_state",
+      "to": "parity_engine",
+      "label": "feature parity"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Investigator Core",
+      "items": [
+        "FastAPI case service and React/Cytoscape workbench",
+        "In-memory thread-safe CaseService, EvidenceStore, and GraphRepo",
+        "Guarded DeepSeek agent is optional, budgeted, and fail-closed"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Streaming & Parity",
+      "items": [
+        "Broker record replay with coordinate-aware deduplication",
+        "Invalid or corrupt records diverted to DurableFileQuarantineStore",
+        "Dual scoring verifies OnlineGraphAccumulator against offline oracle"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Research & Release",
+      "items": [
+        "Tabular and GraphSAGE empirical training baselines",
+        "Decision gate enforces baseline gain before HGT/TGN research",
+        "Cryptographic release manifest with SHA-256 artifact inventory"
+      ]
+    }
+  ]
+}
