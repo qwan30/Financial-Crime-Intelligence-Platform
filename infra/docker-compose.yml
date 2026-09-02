@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: bitnami/kafka:4.0
+    image: soldevelo/kafka:4.0
     environment:
       KAFKA_CFG_NODE_ID: "1"
       KAFKA_CFG_PROCESS_ROLES: broker,controller
