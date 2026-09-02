@@ -56,7 +56,7 @@ jobs:
       - name: Run Pytest (Unit & Integration)
         run: |
           if [ -f "pyproject.toml" ] && [ -d "tests" ]; then
-            uv run pytest -q --tb=short
+            uv run --all-groups pytest -q --tb=short
           else
             echo "Tests directory or pyproject.toml not present yet, skipping pytest."
           fi
