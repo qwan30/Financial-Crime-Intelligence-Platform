@@ -48,4 +48,6 @@ def advanced_model_decision(
         return AdvancedModelDecision(next_family="tgn", reason="unresolved temporal feature gap")
     if hgt_delta > 0 and tgn_delta > 0:
         return AdvancedModelDecision(next_family="hybrid", reason="HGT and TGN both passed")
-    return AdvancedModelDecision(next_family="JUSTIFIED_NULL", reason="no advanced hypothesis passed")
+    return AdvancedModelDecision(
+        next_family="JUSTIFIED_NULL", reason="no advanced hypothesis passed"
+    )

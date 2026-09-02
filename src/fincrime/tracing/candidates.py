@@ -64,10 +64,14 @@ def generate_candidates(graph: nx.MultiDiGraph, request: TraceRequest) -> TraceR
             for _, next_target, key, data in graph.out_edges(target, keys=True, data=True):
                 next_edge_id = str(key)
                 if next_edge_id not in visited_edges:
-                    heapq.heappush(queue, (-_edge_amount(data), next_edge_id, str(next_target), hop + 1))
+                    heapq.heappush(
+                        queue, (-_edge_amount(data), next_edge_id, str(next_target), hop + 1)
+                    )
 
     has_remaining = any(item[1] not in visited_edges for item in queue)
-    status: Literal["COMPLETE", "TRACE_TRUNCATED"] = "TRACE_TRUNCATED" if has_remaining else "COMPLETE"
+    status: Literal["COMPLETE", "TRACE_TRUNCATED"] = (
+        "TRACE_TRUNCATED" if has_remaining else "COMPLETE"
+    )
 
     return TraceResult(
         edge_ids=tuple(selected),

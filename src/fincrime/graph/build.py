@@ -8,9 +8,7 @@ import networkx as nx  # type: ignore[import-untyped]
 from fincrime.graph.events import TransactionEvent
 
 
-def build_graph(
-    events: Iterable[TransactionEvent], cutoff: datetime
-) -> nx.MultiDiGraph:
+def build_graph(events: Iterable[TransactionEvent], cutoff: datetime) -> nx.MultiDiGraph:
     """Build a point-in-time multi-directed graph excluding future events."""
     if cutoff.tzinfo is None or cutoff.tzinfo.utcoffset(cutoff) is None:
         raise ValueError("cutoff must be timezone-aware")

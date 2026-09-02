@@ -47,9 +47,7 @@ def test_no_advanced_hypothesis_passed_records_justified_null() -> None:
 
 
 def test_advanced_model_decision_immutability() -> None:
-    decision = AdvancedModelDecision(
-        next_family="hgt", reason="real heterogeneous ontology"
-    )
+    decision = AdvancedModelDecision(next_family="hgt", reason="real heterogeneous ontology")
     with pytest.raises(ValidationError):
         decision.next_family = "tgn"  # type: ignore[misc]
 
@@ -62,7 +60,9 @@ def test_invalid_bool_types_fail_validation(bad_bool: object) -> None:
         advanced_model_decision(True, 0.04, bad_bool, 0.0, 0.0)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("bad_delta", [float("nan"), float("inf"), float("-inf"), True, False, "0.04", None])
+@pytest.mark.parametrize(
+    "bad_delta", [float("nan"), float("inf"), float("-inf"), True, False, "0.04", None]
+)
 def test_invalid_delta_values_fail_validation(bad_delta: object) -> None:
     with pytest.raises((ValueError, TypeError), match="finite|numeric|float|delta"):
         advanced_model_decision(True, bad_delta, False, 0.0, 0.0)  # type: ignore[arg-type]

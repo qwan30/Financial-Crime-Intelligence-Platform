@@ -51,19 +51,15 @@ def _validate_fit_inputs(
     return x_arr, y_arr
 
 
-def fit_logistic(
-    x: NDArray[np.float64], y: NDArray[np.int64], seed: int
-) -> LogisticRegression:
+def fit_logistic(x: NDArray[np.float64], y: NDArray[np.int64], seed: int) -> LogisticRegression:
     """Fit a balanced LogisticRegression baseline on binary tabular features."""
     x_arr, y_arr = _validate_fit_inputs(x, y, seed)
-    return LogisticRegression(
-        class_weight="balanced", random_state=seed, max_iter=1000
-    ).fit(x_arr, y_arr)
+    return LogisticRegression(class_weight="balanced", random_state=seed, max_iter=1000).fit(
+        x_arr, y_arr
+    )
 
 
-def fit_lightgbm(
-    x: NDArray[np.float64], y: NDArray[np.int64], seed: int
-) -> lgb.LGBMClassifier:
+def fit_lightgbm(x: NDArray[np.float64], y: NDArray[np.int64], seed: int) -> lgb.LGBMClassifier:
     """Fit a balanced LightGBM baseline on binary tabular features."""
     x_arr, y_arr = _validate_fit_inputs(x, y, seed)
     return lgb.LGBMClassifier(
@@ -76,9 +72,7 @@ def fit_lightgbm(
     ).fit(x_arr, y_arr)
 
 
-def predict_scores(
-    model: ProbabilityModel, x: NDArray[np.float64]
-) -> NDArray[np.float64]:
+def predict_scores(model: ProbabilityModel, x: NDArray[np.float64]) -> NDArray[np.float64]:
     """Extract positive class probabilities from a fitted probability model."""
     x_arr = np.asarray(x, dtype=np.float64)
     if x_arr.ndim != 2:

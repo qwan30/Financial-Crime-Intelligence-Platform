@@ -33,11 +33,7 @@ def capacity_decision(
     if any(value < 0 for value in values):
         raise ValueError("capacity values must be non-negative")
     required = (
-        archive_bytes
-        + extraction_bytes
-        + processed_bytes
-        + temporary_bytes
-        + safety_headroom_bytes
+        archive_bytes + extraction_bytes + processed_bytes + temporary_bytes + safety_headroom_bytes
     )
     return CapacityDecision(
         status="READY" if disk_free_bytes >= required else "SKIPPED_BY_RESOURCE",
