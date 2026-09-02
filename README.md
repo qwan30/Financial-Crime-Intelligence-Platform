@@ -27,11 +27,11 @@ The implemented architecture is organized into three decoupled operating lanes:
 2. **Investigator Workbench & Guarded Agent**: FastAPI case API, in-memory case/evidence stores, bounded graph traversal, React 19/Cytoscape investigator UI, and guarded DeepSeek hypothesis generation.
 3. **Streaming Replay & Quarantine**: Strict envelope parsing, replay state machine, durable JSONL quarantine, and an online graph accumulator validated for offline/online scoring parity.
 
-[![Implemented System Architecture](docs/architecture/archify/implemented-system.svg)](docs/architecture/archify/implemented-system.html)
+[![Implemented System Architecture](docs/architecture/archify/implemented-system.gif)](docs/architecture/archify/implemented-system.html)
 
-> 🎬 **Interactive & Motion Previews:**
+> 🎬 **Interactive, Vector & Video Artifacts:**
 > - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/implemented-system.html) — Live canvas with zoom/pan, chapter navigation, component spotlighting, and dark/light theme switching.
-> - 🎥 [**Watch Trace Motion Video (WebM)**](docs/architecture/archify/implemented-system.webm) — 6-second recording illustrating continuous particle data flow across all three operating lanes.
+> - 📐 [**View Vector SVG**](docs/architecture/archify/implemented-system.svg) · 🎥 [**Watch WebM Video**](docs/architecture/archify/implemented-system.webm)
 
 ---
 
@@ -43,11 +43,11 @@ The forensic workflow bridges automated graph intelligence and human analyst ove
 2. **Guarded Hypothesis Generation**: The case snapshot and verified evidence are submitted to DeepSeek Reasoner under strict token budgets. Output is validated against cited evidence IDs. If evidence is missing, budget is exhausted, or citations fail validation, the system fails closed gracefully.
 3. **Analyst Review & Adjudication**: The human investigator examines the interactive graph topology, reviews supporting/mitigating evidence, evaluates the AI hypothesis, and submits disposition via `POST /cases/{case_id}/feedback`.
 
-[![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.svg)](docs/architecture/archify/investigation-workflow.html)
+[![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.gif)](docs/architecture/archify/investigation-workflow.html)
 
-> 🎬 **Interactive & Motion Previews:**
+> 🎬 **Interactive, Vector & Video Artifacts:**
 > - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/investigation-workflow.html) — Step through animated state transitions, trace prompt/evidence flows, and inspect fail-closed branches.
-> - 🎥 [**Watch Workflow Animation Video (WebM)**](docs/architecture/archify/investigation-workflow.webm) — 6-second motion capture detailing the end-to-end hydration, guarded reasoning, and feedback cycle.
+> - 📐 [**View Vector SVG**](docs/architecture/archify/investigation-workflow.svg) · 🎥 [**Watch WebM Video**](docs/architecture/archify/investigation-workflow.webm)
 
 ---
 
