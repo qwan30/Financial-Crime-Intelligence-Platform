@@ -13,7 +13,6 @@ from fincrime.data.tracebench import public_transactions
 _SHA256_HEX_PATTERN: re.Pattern[str] = re.compile(r"^[0-9a-f]{64}$")
 
 
-
 def write_public_artifact(
     frame: pl.DataFrame,
     output_path: Path,

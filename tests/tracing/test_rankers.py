@@ -12,7 +12,9 @@ from fincrime.tracing.rankers import (
 
 
 def test_unknown_edges_are_excluded_from_ranker_training() -> None:
-    labels = np.array([TraceLabel.RELEVANT, TraceLabel.UNKNOWN, TraceLabel.CONFIRMED_BENIGN], dtype=object)
+    labels = np.array(
+        [TraceLabel.RELEVANT, TraceLabel.UNKNOWN, TraceLabel.CONFIRMED_BENIGN], dtype=object
+    )
     assert training_mask(labels).tolist() == [True, False, True]
 
 

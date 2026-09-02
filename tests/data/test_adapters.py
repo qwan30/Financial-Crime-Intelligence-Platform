@@ -92,7 +92,6 @@ def test_adapter_mappings_are_immutable(
         del adapter_cls.mapping["transaction_id"]  # type: ignore[attr-defined]
 
 
-
 @pytest.mark.parametrize(
     ("adapter", "frame"),
     [
@@ -165,9 +164,7 @@ def test_amlbench_adapter_rejects_non_string_identifiers(id_col: str) -> None:
         (float("-inf"), "non-finite amount"),
     ],
 )
-def test_adapter_rejects_non_finite_amounts(
-    amount_val: Any, expected_match: str
-) -> None:
+def test_adapter_rejects_non_finite_amounts(amount_val: Any, expected_match: str) -> None:
     raw = pl.DataFrame(
         {
             "transaction_id": ["e1"],
@@ -211,7 +208,6 @@ def test_adapter_rejects_naive_datetime_event_time() -> None:
 
     with pytest.raises(ValueError, match="event_time must be timezone-aware"):
         AMLSimAdapter().transactions(raw)
-
 
 
 def test_adapter_rejects_string_event_time() -> None:

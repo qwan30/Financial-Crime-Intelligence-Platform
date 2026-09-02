@@ -30,9 +30,7 @@ def test_lightgbm_smoke_behavior() -> None:
     except (ImportError, OSError) as exc:
         pytest.skip(f"LightGBM is not functional in this environment: {exc}")
 
-    x = np.tile([[0.0, 0.1], [0.1, 0.2], [0.8, 0.9], [0.9, 1.0]], (10, 1)).astype(
-        np.float64
-    )
+    x = np.tile([[0.0, 0.1], [0.1, 0.2], [0.8, 0.9], [0.9, 1.0]], (10, 1)).astype(np.float64)
     y = np.tile([0, 0, 1, 1], 10).astype(np.int64)
     model = fit_lightgbm(x, y, seed=11)
     scores = predict_scores(model, x)

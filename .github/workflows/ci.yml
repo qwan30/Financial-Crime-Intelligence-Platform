@@ -28,7 +28,7 @@ jobs:
       - name: Run code quality checks
         run: |
           if [ -f "pyproject.toml" ]; then
-            uv run ruff format --check .
+            uv run ruff format --check src tests
             uv run ruff check .
             if [ -d "src" ]; then
               uv run mypy src

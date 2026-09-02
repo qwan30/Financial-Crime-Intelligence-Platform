@@ -46,9 +46,7 @@ def test_pass_through_ratio_is_capped_at_one() -> None:
 def test_pass_through_ratio_is_zero_when_no_incoming() -> None:
     cutoff = datetime(2026, 1, 2, tzinfo=UTC)
     graph = build_graph(
-        (
-            TransactionEvent("e1", "b", "c", 10.0, cutoff),
-        ),
+        (TransactionEvent("e1", "b", "c", 10.0, cutoff),),
         cutoff,
     )
     features = account_features(graph, "b")
@@ -62,9 +60,7 @@ def test_pass_through_ratio_is_zero_when_no_incoming() -> None:
 def test_absent_account_returns_zeroed_features() -> None:
     cutoff = datetime(2026, 1, 2, tzinfo=UTC)
     graph = build_graph(
-        (
-            TransactionEvent("e1", "a", "b", 10.0, cutoff),
-        ),
+        (TransactionEvent("e1", "a", "b", 10.0, cutoff),),
         cutoff,
     )
     features = account_features(graph, "non_existent_account")

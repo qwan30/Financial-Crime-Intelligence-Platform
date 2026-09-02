@@ -7,9 +7,7 @@ from fincrime.training.gates import PromotionDecision, promotion_decision
 
 
 def test_failed_candidate_returns_null_selection() -> None:
-    decision = promotion_decision(
-        baseline_values=(0.7,) * 5, candidate_values=(0.69,) * 5
-    )
+    decision = promotion_decision(baseline_values=(0.7,) * 5, candidate_values=(0.69,) * 5)
     assert decision.selected_model is None
     assert decision.mean_delta == pytest.approx(-0.01)
     assert decision.ci_lower < 0
@@ -62,8 +60,6 @@ def test_non_finite_values_fail_validation(
 
 
 def test_promotion_decision_immutability() -> None:
-    decision = PromotionDecision(
-        selected_model="candidate", mean_delta=0.05, ci_lower=0.02
-    )
+    decision = PromotionDecision(selected_model="candidate", mean_delta=0.05, ci_lower=0.02)
     with pytest.raises(ValidationError):
         decision.selected_model = None  # type: ignore[misc]

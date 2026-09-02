@@ -19,9 +19,14 @@ def promotion_decision(
 ) -> PromotionDecision:
     """Decide model promotion using fixed 5-seed bootstrap confidence bound."""
     if len(baseline_values) != 5 or len(candidate_values) != 5:
-        raise ValueError("baseline_values and candidate_values must both contain exactly 5 elements")
+        raise ValueError(
+            "baseline_values and candidate_values must both contain exactly 5 elements"
+        )
 
-    for name, vals in (("baseline_values", baseline_values), ("candidate_values", candidate_values)):
+    for name, vals in (
+        ("baseline_values", baseline_values),
+        ("candidate_values", candidate_values),
+    ):
         for val in vals:
             if not isinstance(val, (int, float)) or not math.isfinite(val):
                 raise ValueError(f"All values in {name} must be finite numeric values, got {val}")
@@ -38,9 +43,5 @@ def promotion_decision(
         dtype=np.float64,
     )
     lower = float(np.quantile(bootstrap_means, 0.025))
-    selected = (
-        "candidate"
-        if lower > 0 and sum(delta > 0 for delta in deltas) >= 4
-        else None
-    )
+    selected = "candidate" if lower > 0 and sum(delta > 0 for delta in deltas) >= 4 else None
     return PromotionDecision(selected_model=selected, mean_delta=mean_delta, ci_lower=lower)

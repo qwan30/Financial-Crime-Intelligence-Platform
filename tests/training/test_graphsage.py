@@ -29,10 +29,14 @@ def test_graphsage_smoke_training_returns_finite_loss() -> None:
 def test_neighbor_loader_keeps_seed_batch_bounded() -> None:
     data = Data(
         x=torch.rand((20, 2), dtype=torch.float32),
-        edge_index=torch.tensor([[i for i in range(19)], [i + 1 for i in range(19)]], dtype=torch.int64),
+        edge_index=torch.tensor(
+            [[i for i in range(19)], [i + 1 for i in range(19)]], dtype=torch.int64
+        ),
         y=torch.zeros(20, dtype=torch.int64),
     )
-    batch = next(iter(build_neighbor_loader(data, torch.tensor([0, 1], dtype=torch.int64), batch_size=2)))
+    batch = next(
+        iter(build_neighbor_loader(data, torch.tensor([0, 1], dtype=torch.int64), batch_size=2))
+    )
     assert batch.batch_size == 2
 
 
@@ -105,4 +109,6 @@ def test_invalid_batch_size_fails_validation(invalid_batch_size: int) -> None:
         y=torch.tensor([0, 1], dtype=torch.int64),
     )
     with pytest.raises(ValueError, match="batch_size|positive"):
-        build_neighbor_loader(data, torch.tensor([0], dtype=torch.int64), batch_size=invalid_batch_size)
+        build_neighbor_loader(
+            data, torch.tensor([0], dtype=torch.int64), batch_size=invalid_batch_size
+        )

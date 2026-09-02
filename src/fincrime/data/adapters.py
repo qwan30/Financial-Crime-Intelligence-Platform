@@ -40,13 +40,16 @@ def _validate_canonical_frame(frame: pl.DataFrame) -> pl.DataFrame:
     dt_dtype = frame.schema["event_time"]
     if dt_dtype.base_type() != pl.Datetime:
         raise ValueError("canonical frame event_time must be datetime type")
-    if not isinstance(dt_dtype, pl.Datetime) or dt_dtype.time_zone is None or dt_dtype.time_zone == "":
+    if (
+        not isinstance(dt_dtype, pl.Datetime)
+        or dt_dtype.time_zone is None
+        or dt_dtype.time_zone == ""
+    ):
         raise ValueError("canonical frame event_time must be timezone-aware")
     if frame["event_time"].null_count() > 0:
         raise ValueError("canonical frame contains null event_time")
 
     return frame
-
 
 
 class AMLSimAdapter:
@@ -158,14 +161,13 @@ class AMLSimSampleAdapter:
             raise ValueError("relative ticks must be non-negative")
 
         edge_ids = [f"{self.edge_id_prefix}{i}" for i in range(frame.height)]
-        event_times = [
-            self.observation_start + int(t) * self.tick_duration for t in frame["time"]
-        ]
+        event_times = [self.observation_start + int(t) * self.tick_duration for t in frame["time"]]
 
         tz_name = (
             "UTC"
             if self.observation_start.tzinfo is not None
-            and self.observation_start.tzinfo.tzname(self.observation_start) in ("UTC", "UTC+00:00", "+00:00", None)
+            and self.observation_start.tzinfo.tzname(self.observation_start)
+            in ("UTC", "UTC+00:00", "+00:00", None)
             else str(self.observation_start.tzinfo)
         )
 

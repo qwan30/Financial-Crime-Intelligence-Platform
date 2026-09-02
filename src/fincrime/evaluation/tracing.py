@@ -15,9 +15,7 @@ class TraceMetrics(BaseModel):
     unknown_inclusion_rate: float
 
 
-def trace_metrics(
-    returned: Sequence[str], labels: dict[str, TraceLabel]
-) -> TraceMetrics:
+def trace_metrics(returned: Sequence[str], labels: dict[str, TraceLabel]) -> TraceMetrics:
     """Evaluate trace ranker predictions with separate tri-state metrics."""
     for item in returned:
         if item not in labels:

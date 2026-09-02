@@ -39,10 +39,16 @@ def fit_trace_ranker(
     mask = training_mask(labels_list)
     known_count = int(mask.sum())
     if known_count == 0:
-        raise ValueError("At least one known label (RELEVANT or CONFIRMED_BENIGN) is required for training")
+        raise ValueError(
+            "At least one known label (RELEVANT or CONFIRMED_BENIGN) is required for training"
+        )
 
     y = np.array(
-        [1 if label is TraceLabel.RELEVANT else 0 for label, is_known in zip(labels_list, mask, strict=True) if is_known],
+        [
+            1 if label is TraceLabel.RELEVANT else 0
+            for label, is_known in zip(labels_list, mask, strict=True)
+            if is_known
+        ],
         dtype=np.int32,
     )
     model = lgb.LGBMRanker(objective="lambdarank", random_state=seed, verbosity=-1)

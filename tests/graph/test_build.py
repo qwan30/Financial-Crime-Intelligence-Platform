@@ -31,9 +31,7 @@ def test_event_at_exact_cutoff_is_included() -> None:
 
 def test_cutoff_metadata_is_preserved_on_graph() -> None:
     cutoff = datetime(2026, 1, 2, 15, 30, 0, tzinfo=UTC)
-    events = (
-        TransactionEvent("e1", "a", "b", 10.0, datetime(2026, 1, 1, tzinfo=UTC)),
-    )
+    events = (TransactionEvent("e1", "a", "b", 10.0, datetime(2026, 1, 1, tzinfo=UTC)),)
     graph = build_graph(events, cutoff)
     assert graph.graph["cutoff"] == cutoff.isoformat()
 
@@ -88,7 +86,9 @@ def test_string_coercion_for_amount_in_event_is_rejected() -> None:
         TransactionEvent("e1", "a", "b", "10.0", datetime(2026, 1, 1, tzinfo=UTC))  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("invalid_amount", [0.0, -1.0, -100.5, float("inf"), float("-inf"), float("nan")])
+@pytest.mark.parametrize(
+    "invalid_amount", [0.0, -1.0, -100.5, float("inf"), float("-inf"), float("nan")]
+)
 def test_non_finite_or_non_positive_amount_raises_validation_error(invalid_amount: float) -> None:
     with pytest.raises(ValidationError):
         TransactionEvent("e1", "a", "b", invalid_amount, datetime(2026, 1, 1, tzinfo=UTC))
@@ -146,9 +146,7 @@ def test_dst_fold_and_differing_tz_offsets_are_normalized_to_utc() -> None:
 
 def test_timezone_naive_cutoff_fails_clearly() -> None:
     cutoff_naive = datetime(2026, 1, 2)  # noqa: DTZ001
-    events = (
-        TransactionEvent("e1", "a", "b", 10.0, datetime(2026, 1, 1, tzinfo=UTC)),
-    )
+    events = (TransactionEvent("e1", "a", "b", 10.0, datetime(2026, 1, 1, tzinfo=UTC)),)
     with pytest.raises((ValueError, TypeError), match="[Tt]imezone|aware"):
         build_graph(events, cutoff_naive)
 
