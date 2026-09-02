@@ -1,4 +1,4 @@
-<svg viewBox="0 0 1170 444" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase" style="" width="1170" height="444" xmlns="http://www.w3.org/2000/svg"><style>@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
+<svg viewBox="0 0 1170 444" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" style="" width="1170" height="444" xmlns="http://www.w3.org/2000/svg"><style>@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 600; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
@@ -317,20 +317,20 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="Streaming Replay, Quarantine &amp; Parity" x="30" y="270" width="1100" height="106" rx="12" class="c-region" stroke-width="1"/>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="training_runner" data-edge-to="advanced_gate" data-edge-label="baseline deltas" data-edge-key="0" data-edge-id="conn-runner-gate" data-composition-points="230,88;350,88" d="M 230 88 L 350 88" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="advanced_gate" data-edge-to="release_manifest" data-edge-label="gating decision" data-edge-key="1" data-edge-id="conn-gate-manifest" data-composition-points="520,88;640,88" d="M 520 88 L 640 88" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="investigator_web" data-edge-to="case_api" data-edge-label="workbench &amp; feedback" data-edge-key="2" data-edge-id="conn-web-api" data-composition-points="230,208;350,208" d="M 230 208 L 350 208" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="case_api" data-edge-to="inmemory_stores" data-edge-label="hydrate &amp; append" data-edge-key="3" data-edge-id="conn-api-stores" data-composition-points="520,208;640,208" d="M 520 208 L 640 208" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="inmemory_stores" data-edge-to="guarded_deepseek" data-edge-label="verify citations" data-edge-key="4" data-edge-id="conn-stores-deepseek" data-composition-points="810,208;930,208" d="M 810 208 L 930 208" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="replay_engine" data-edge-to="quarantine_store" data-edge-label="divert invalid" data-edge-key="5" data-edge-id="conn-replay-quarantine" data-composition-points="350,328;230,328" d="M 350 328 L 230 328" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="replay_engine" data-edge-to="replay_state" data-edge-label="commit offsets" data-edge-key="6" data-edge-id="conn-replay-state" data-composition-points="520,328;640,328" d="M 520 328 L 640 328" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="replay_state" data-edge-to="parity_engine" data-edge-label="feature parity" data-edge-key="7" data-edge-id="conn-state-parity" data-composition-points="810,328;930,328" d="M 810 328 L 930 328" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="training_runner" data-edge-to="advanced_gate" data-edge-label="baseline deltas" data-edge-key="0" data-edge-id="conn-runner-gate" data-composition-points="230,88;350,88" d="M 230 88 L 350 88" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="advanced_gate" data-edge-to="release_manifest" data-edge-label="gating decision" data-edge-key="1" data-edge-id="conn-gate-manifest" data-composition-points="520,88;640,88" d="M 520 88 L 640 88" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="investigator_web" data-edge-to="case_api" data-edge-label="workbench &amp; feedback" data-edge-key="2" data-edge-id="conn-web-api" data-composition-points="230,208;350,208" d="M 230 208 L 350 208" class="a-emphasis" data-animate="edge" style="--step:2" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="case_api" data-edge-to="inmemory_stores" data-edge-label="hydrate &amp; append" data-edge-key="3" data-edge-id="conn-api-stores" data-composition-points="520,208;640,208" d="M 520 208 L 640 208" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="inmemory_stores" data-edge-to="guarded_deepseek" data-edge-label="verify citations" data-edge-key="4" data-edge-id="conn-stores-deepseek" data-composition-points="810,208;930,208" d="M 810 208 L 930 208" class="a-security" data-animate="edge" style="--step:4" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="replay_engine" data-edge-to="quarantine_store" data-edge-label="divert invalid" data-edge-key="5" data-edge-id="conn-replay-quarantine" data-composition-points="350,328;230,328" d="M 350 328 L 230 328" class="a-security" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="replay_engine" data-edge-to="replay_state" data-edge-label="commit offsets" data-edge-key="6" data-edge-id="conn-replay-state" data-composition-points="520,328;640,328" d="M 520 328 L 640 328" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="replay_state" data-edge-to="parity_engine" data-edge-label="feature parity" data-edge-key="7" data-edge-id="conn-state-parity" data-composition-points="810,328;930,328" d="M 810 328 L 930 328" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
         <!-- Components -->
         <g id="node-training_runner" data-node-id="training_runner" data-node-label="Training Runner" tabindex="0" role="button" aria-label="Focus Training Runner, Tabular &amp; GraphSAGE Baselines, Offline Research &amp; Release Evidence" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Tabular &amp; GraphSAGE Baselines" data-node-tag="fincrime.training" data-node-context="Offline Research &amp; Release Evidence">
           <title>Training Runner · Tabular &amp; GraphSAGE Baselines · Offline Research &amp; Release Evidence · fincrime.training</title>
           <rect x="60" y="60" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="60" y="60" width="170" height="56" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="60" y="60" width="170" height="56" rx="6" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(66 66) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -342,7 +342,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-advanced_gate" data-node-id="advanced_gate" data-node-label="Advanced Model Gate" tabindex="0" role="button" aria-label="Focus Advanced Model Gate, Empirical Gain Gate (HGT/TGN), Offline Research &amp; Release Evidence" aria-pressed="false" data-node-kind="security" data-node-sublabel="Empirical Gain Gate (HGT/TGN)" data-node-tag="JUSTIFIED_NULL" data-node-context="Offline Research &amp; Release Evidence">
           <title>Advanced Model Gate · Empirical Gain Gate (HGT/TGN) · Offline Research &amp; Release Evidence · JUSTIFIED_NULL</title>
           <rect x="350" y="60" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="350" y="60" width="170" height="56" rx="6" class="c-security" stroke-width="1.5"/>
+          <rect x="350" y="60" width="170" height="56" rx="6" class="c-security" data-animate="node" style="--step:1" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(356 66) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
@@ -355,7 +355,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-release_manifest" data-node-id="release_manifest" data-node-label="Release Manifest" tabindex="0" role="button" aria-label="Focus Release Manifest, SHA-256 Artifact Inventory, Offline Research &amp; Release Evidence" aria-pressed="false" data-node-kind="database" data-node-sublabel="SHA-256 Artifact Inventory" data-node-tag="fincrime.release" data-node-context="Offline Research &amp; Release Evidence">
           <title>Release Manifest · SHA-256 Artifact Inventory · Offline Research &amp; Release Evidence · fincrime.release</title>
           <rect x="640" y="60" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="640" y="60" width="170" height="56" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="640" y="60" width="170" height="56" rx="6" class="c-database" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(646 66) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -368,7 +368,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-investigator_web" data-node-id="investigator_web" data-node-label="Investigator Workbench" tabindex="0" role="button" aria-label="Focus Investigator Workbench, React + Cytoscape Graph UI, Investigator Workbench &amp; Guarded Agent" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="React + Cytoscape Graph UI" data-node-tag="apps/investigator-web" data-node-context="Investigator Workbench &amp; Guarded Agent">
           <title>Investigator Workbench · React + Cytoscape Graph UI · Investigator Workbench &amp; Guarded Agent · apps/investigator-web</title>
           <rect x="60" y="180" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="60" y="180" width="170" height="56" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <rect x="60" y="180" width="170" height="56" rx="6" class="c-frontend" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(66 186) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
@@ -383,7 +383,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-case_api" data-node-id="case_api" data-node-label="Case API" tabindex="0" role="button" aria-label="Focus Case API, FastAPI REST Service (:8000), Investigator Workbench &amp; Guarded Agent" aria-pressed="false" data-node-kind="backend" data-node-sublabel="FastAPI REST Service (:8000)" data-node-tag="apps/case_api" data-node-context="Investigator Workbench &amp; Guarded Agent">
           <title>Case API · FastAPI REST Service (:8000) · Investigator Workbench &amp; Guarded Agent · apps/case_api</title>
           <rect x="350" y="180" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="350" y="180" width="170" height="56" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="350" y="180" width="170" height="56" rx="6" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(356 186) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -395,7 +395,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-inmemory_stores" data-node-id="inmemory_stores" data-node-label="In-Memory Stores" tabindex="0" role="button" aria-label="Focus In-Memory Stores, Case, Evidence &amp; Graph Repos, Investigator Workbench &amp; Guarded Agent" aria-pressed="false" data-node-kind="database" data-node-sublabel="Case, Evidence &amp; Graph Repos" data-node-tag="Thread-Safe Dicts" data-node-context="Investigator Workbench &amp; Guarded Agent">
           <title>In-Memory Stores · Case, Evidence &amp; Graph Repos · Investigator Workbench &amp; Guarded Agent · Thread-Safe Dicts</title>
           <rect x="640" y="180" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="640" y="180" width="170" height="56" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="640" y="180" width="170" height="56" rx="6" class="c-database" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(646 186) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -408,7 +408,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-guarded_deepseek" data-node-id="guarded_deepseek" data-node-label="Guarded DeepSeek" tabindex="0" role="button" aria-label="Focus Guarded DeepSeek, Optional Fail-Closed Agent, Investigator Workbench &amp; Guarded Agent" aria-pressed="false" data-node-kind="security" data-node-sublabel="Optional Fail-Closed Agent" data-node-tag="BudgetController" data-node-context="Investigator Workbench &amp; Guarded Agent">
           <title>Guarded DeepSeek · Optional Fail-Closed Agent · Investigator Workbench &amp; Guarded Agent · BudgetController</title>
           <rect x="930" y="180" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="930" y="180" width="170" height="56" rx="6" class="c-security" stroke-width="1.5"/>
+          <rect x="930" y="180" width="170" height="56" rx="6" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(936 186) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
@@ -421,7 +421,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-quarantine_store" data-node-id="quarantine_store" data-node-label="Quarantine Store" tabindex="0" role="button" aria-label="Focus Quarantine Store, Durable JSONL Dead-Letter, Streaming Replay, Quarantine &amp; Parity" aria-pressed="false" data-node-kind="database" data-node-sublabel="Durable JSONL Dead-Letter" data-node-tag="QuarantineStore" data-node-context="Streaming Replay, Quarantine &amp; Parity">
           <title>Quarantine Store · Durable JSONL Dead-Letter · Streaming Replay, Quarantine &amp; Parity · QuarantineStore</title>
           <rect x="60" y="300" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="60" y="300" width="170" height="56" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="60" y="300" width="170" height="56" rx="6" class="c-database" data-animate="node" style="--step:6" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(66 306) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -434,7 +434,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-replay_engine" data-node-id="replay_engine" data-node-label="Replay Engine" tabindex="0" role="button" aria-label="Focus Replay Engine, Broker Stream &amp; Deduplication, Streaming Replay, Quarantine &amp; Parity" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Broker Stream &amp; Deduplication" data-node-tag="fincrime.streaming" data-node-context="Streaming Replay, Quarantine &amp; Parity">
           <title>Replay Engine · Broker Stream &amp; Deduplication · Streaming Replay, Quarantine &amp; Parity · fincrime.streaming</title>
           <rect x="350" y="300" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="350" y="300" width="170" height="56" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="350" y="300" width="170" height="56" rx="6" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(356 306) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -446,7 +446,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-replay_state" data-node-id="replay_state" data-node-label="Replay State" tabindex="0" role="button" aria-label="Focus Replay State, In-Memory Offsets &amp; Events, Streaming Replay, Quarantine &amp; Parity" aria-pressed="false" data-node-kind="database" data-node-sublabel="In-Memory Offsets &amp; Events" data-node-tag="ReplayState" data-node-context="Streaming Replay, Quarantine &amp; Parity">
           <title>Replay State · In-Memory Offsets &amp; Events · Streaming Replay, Quarantine &amp; Parity · ReplayState</title>
           <rect x="640" y="300" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="640" y="300" width="170" height="56" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="640" y="300" width="170" height="56" rx="6" class="c-database" data-animate="node" style="--step:7" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(646 306) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -459,7 +459,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-parity_engine" data-node-id="parity_engine" data-node-label="Parity Engine" tabindex="0" role="button" aria-label="Focus Parity Engine, Dual Online/Offline Scoring, Streaming Replay, Quarantine &amp; Parity" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Dual Online/Offline Scoring" data-node-tag="Point-in-Time" data-node-context="Streaming Replay, Quarantine &amp; Parity">
           <title>Parity Engine · Dual Online/Offline Scoring · Streaming Replay, Quarantine &amp; Parity · Point-in-Time</title>
           <rect x="930" y="300" width="170" height="56" rx="6" class="c-mask"/>
-          <rect x="930" y="300" width="170" height="56" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="930" y="300" width="170" height="56" rx="6" class="c-backend" data-animate="node" style="--step:8" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(936 306) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>

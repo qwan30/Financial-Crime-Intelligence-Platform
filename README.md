@@ -29,10 +29,9 @@ The implemented architecture is organized into three decoupled operating lanes:
 
 [![Implemented System Architecture](docs/architecture/archify/implemented-system.svg)](docs/architecture/archify/implemented-system.html)
 
-*Click the diagram above or open the [Interactive System Architecture Diagram](docs/architecture/archify/implemented-system.html) for component details, port mappings, and data flows.*
+*Click the diagram above or open the [Interactive System Architecture Diagram](docs/architecture/archify/implemented-system.html) to explore the live standalone app with **trace motion animation** (live data particles), interactive guided story chapters, component spotlighting, and dark/light theme toggling.*
 
 ---
-
 ## Investigation & Adjudication Workflow
 
 The forensic workflow bridges automated graph intelligence and human analyst oversight:
@@ -43,10 +42,9 @@ The forensic workflow bridges automated graph intelligence and human analyst ove
 
 [![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.svg)](docs/architecture/archify/investigation-workflow.html)
 
-*Click the diagram above or open the [Interactive Investigation Workflow Diagram](docs/architecture/archify/investigation-workflow.html) for step-by-step state transitions and failure modes.*
+*Click the diagram above or open the [Interactive Investigation Workflow Diagram](docs/architecture/archify/investigation-workflow.html) to step through animated state transitions, trace prompt/evidence flows, inspect fail-closed branches, and explore interactive focus views.*
 
 ---
-
 ## Implemented Capabilities
 
 | Subsystem | Components / Modules | Implemented Capability |

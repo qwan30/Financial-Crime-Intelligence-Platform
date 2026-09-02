@@ -1,4 +1,4 @@
-<svg viewBox="0 0 1182 534" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase" style="" width="1182" height="534" xmlns="http://www.w3.org/2000/svg"><style>@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
+<svg viewBox="0 0 1182 534" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" style="" width="1182" height="534" xmlns="http://www.w3.org/2000/svg"><style>@font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 600; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
 @font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: local('JetBrains Mono'), local('JetBrainsMono-Regular'); }
@@ -335,21 +335,21 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="citation_val" data-edge-to="render_ui" data-edge-label="verified" data-edge-key="0" data-edge-id="edge-citation-ui" data-composition-points="854.8,338;854.8,154" d="M 854.8 338 L 854.8 154" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="submit_feedback" data-edge-to="append_feedback" data-edge-label="submit" data-edge-key="1" data-edge-id="edge-decision-api" data-composition-points="1105.6,120;1166,120;1166,246;1145.6,246" d="M 1105.6 120 L 1166 120 L 1166 246 L 1145.6 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="deepseek_gen" data-edge-to="citation_val" data-edge-label="claims" data-edge-key="2" data-edge-id="edge-gen-citation" data-composition-points="740,372;786.8,372" d="M 740 372 L 786.8 372" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="traverse_graph" data-edge-to="render_ui" data-edge-label="trace graph" data-edge-key="3" data-edge-id="edge-graph-ui" data-composition-points="672,212;672,120;786.8,120" d="M 672 212 L 672 120 L 786.8 120" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="analyst_open" data-edge-to="route_workbench" data-edge-label="fetch" data-edge-key="4" data-edge-id="edge-open-route" data-composition-points="108,146;108,168;352,168;352,246;336,246" d="M 108 146 L 108 168 L 352 168 L 352 246 L 336 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="route_workbench" data-edge-to="load_case_ev" data-edge-label="snapshot" data-edge-key="5" data-edge-id="edge-route-stores" data-composition-points="228,280;228,300;460.4,300;460.4,280" d="M 228 280 L 228 300 L 460.4 300 L 460.4 280" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="load_case_ev" data-edge-to="traverse_graph" data-edge-label="trace lookup" data-edge-key="6" data-edge-id="edge-stores-graph" data-composition-points="528.4,246;604,246" d="M 528.4 246 L 604 246" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="load_case_ev" data-edge-to="deepseek_gen" data-edge-label="evidence prompt" data-edge-key="7" data-edge-id="edge-stores-prompt" data-composition-points="460.4,280;460.4,372;604,372" d="M 460.4 280 L 460.4 372 L 604 372" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="render_ui" data-edge-to="submit_feedback" data-edge-label="review" data-edge-key="8" data-edge-id="edge-ui-decision" data-composition-points="922.8,120;969.5999999999999,120" d="M 922.8 120 L 969.5999999999999 120" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="citation_val" data-edge-to="render_ui" data-edge-label="verified" data-edge-key="0" data-edge-id="edge-citation-ui" data-composition-points="854.8,338;854.8,154" d="M 854.8 338 L 854.8 154" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="submit_feedback" data-edge-to="append_feedback" data-edge-label="submit" data-edge-key="1" data-edge-id="edge-decision-api" data-composition-points="1105.6,120;1166,120;1166,246;1145.6,246" d="M 1105.6 120 L 1166 120 L 1166 246 L 1145.6 246" class="a-emphasis" data-animate="edge" style="--step:6" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="deepseek_gen" data-edge-to="citation_val" data-edge-label="claims" data-edge-key="2" data-edge-id="edge-gen-citation" data-composition-points="740,372;786.8,372" d="M 740 372 L 786.8 372" class="a-security" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="traverse_graph" data-edge-to="render_ui" data-edge-label="trace graph" data-edge-key="3" data-edge-id="edge-graph-ui" data-composition-points="672,212;672,120;786.8,120" d="M 672 212 L 672 120 L 786.8 120" class="a-default" data-animate="edge" style="--step:11" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="analyst_open" data-edge-to="route_workbench" data-edge-label="fetch" data-edge-key="4" data-edge-id="edge-open-route" data-composition-points="108,146;108,168;352,168;352,246;336,246" d="M 108 146 L 108 168 L 352 168 L 352 246 L 336 246" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="route_workbench" data-edge-to="load_case_ev" data-edge-label="snapshot" data-edge-key="5" data-edge-id="edge-route-stores" data-composition-points="228,280;228,300;460.4,300;460.4,280" d="M 228 280 L 228 300 L 460.4 300 L 460.4 280" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="load_case_ev" data-edge-to="traverse_graph" data-edge-label="trace lookup" data-edge-key="6" data-edge-id="edge-stores-graph" data-composition-points="528.4,246;604,246" d="M 528.4 246 L 604 246" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="load_case_ev" data-edge-to="deepseek_gen" data-edge-label="evidence prompt" data-edge-key="7" data-edge-id="edge-stores-prompt" data-composition-points="460.4,280;460.4,372;604,372" d="M 460.4 280 L 460.4 372 L 604 372" class="a-security" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="render_ui" data-edge-to="submit_feedback" data-edge-label="review" data-edge-key="8" data-edge-id="edge-ui-decision" data-composition-points="922.8,120;969.5999999999999,120" d="M 922.8 120 L 969.5999999999999 120" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead)"/>
 
         <!-- Nodes -->
         <g id="node-analyst_open" data-node-id="analyst_open" data-node-label="Open Case" tabindex="0" role="button" aria-label="Focus Open Case, Select Case, Investigator Web (UI) › Case Hydration" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Select Case" data-node-context="Investigator Web (UI) › Case Hydration">
           <title>Open Case · Select Case · Investigator Web (UI) › Case Hydration</title>
           <rect x="48" y="94" width="120" height="52" rx="6" class="c-mask"/>
-          <rect x="48" y="94" width="120" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <rect x="48" y="94" width="120" height="52" rx="6" class="c-frontend" data-animate="node" style="--step:0" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(54 100) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
@@ -363,7 +363,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-render_ui" data-node-id="render_ui" data-node-label="Workbench View" tabindex="0" role="button" aria-label="Focus Workbench View, Render Claims, Investigator Web (UI) › Guarded Reasoning" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Render Claims" data-node-tag="Cytoscape" data-node-context="Investigator Web (UI) › Guarded Reasoning">
           <title>Workbench View · Render Claims · Investigator Web (UI) › Guarded Reasoning · Cytoscape</title>
           <rect x="786.8" y="86" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="786.8" y="86" width="136" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <rect x="786.8" y="86" width="136" height="68" rx="6" class="c-frontend" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(792.8 92) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
@@ -378,7 +378,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-submit_feedback" data-node-id="submit_feedback" data-node-label="Analyst Decision" tabindex="0" role="button" aria-label="Focus Analyst Decision, Disposition, Investigator Web (UI) › Analyst Feedback" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Disposition" data-node-tag="Adjudication" data-node-context="Investigator Web (UI) › Analyst Feedback">
           <title>Analyst Decision · Disposition · Investigator Web (UI) › Analyst Feedback · Adjudication</title>
           <rect x="969.5999999999999" y="86" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="969.5999999999999" y="86" width="136" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <rect x="969.5999999999999" y="86" width="136" height="68" rx="6" class="c-frontend" data-animate="node" style="--step:6" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(975.5999999999999 92) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
@@ -393,7 +393,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-route_workbench" data-node-id="route_workbench" data-node-label="GET /cases/{case_id}/workbench" tabindex="0" role="button" aria-label="Focus GET /cases/{case_id}/workbench, Hydration Route, Case API &amp; In-Memory Repositories › Case Hydration" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Hydration Route" data-node-tag="FastAPI" data-node-context="Case API &amp; In-Memory Repositories › Case Hydration">
           <title>GET /cases/{case_id}/workbench · Hydration Route · Case API &amp; In-Memory Repositories › Case Hydration · FastAPI</title>
           <rect x="120" y="212" width="216" height="68" rx="6" class="c-mask"/>
-          <rect x="120" y="212" width="216" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="120" y="212" width="216" height="68" rx="6" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(126 218) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -405,7 +405,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-load_case_ev" data-node-id="load_case_ev" data-node-label="Case &amp; Evidence" tabindex="0" role="button" aria-label="Focus Case &amp; Evidence, Snapshot Store, Case API &amp; In-Memory Repositories › Case Hydration" aria-pressed="false" data-node-kind="database" data-node-sublabel="Snapshot Store" data-node-tag="In-Memory" data-node-context="Case API &amp; In-Memory Repositories › Case Hydration">
           <title>Case &amp; Evidence · Snapshot Store · Case API &amp; In-Memory Repositories › Case Hydration · In-Memory</title>
           <rect x="392.4" y="212" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="392.4" y="212" width="136" height="68" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="392.4" y="212" width="136" height="68" rx="6" class="c-database" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(398.4 218) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -418,7 +418,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-traverse_graph" data-node-id="traverse_graph" data-node-label="Trace Graph" tabindex="0" role="button" aria-label="Focus Trace Graph, Subgraph Traversal, Case API &amp; In-Memory Repositories › Guarded Reasoning" aria-pressed="false" data-node-kind="database" data-node-sublabel="Subgraph Traversal" data-node-tag="get_fund_trace" data-node-context="Case API &amp; In-Memory Repositories › Guarded Reasoning">
           <title>Trace Graph · Subgraph Traversal · Case API &amp; In-Memory Repositories › Guarded Reasoning · get_fund_trace</title>
           <rect x="604" y="212" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="604" y="212" width="136" height="68" rx="6" class="c-database" stroke-width="1.5"/>
+          <rect x="604" y="212" width="136" height="68" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(610 218) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -431,7 +431,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-append_feedback" data-node-id="append_feedback" data-node-label="POST /cases/{case_id}/feedback" tabindex="0" role="button" aria-label="Focus POST /cases/{case_id}/feedback, Append Event, Case API &amp; In-Memory Repositories › Analyst Feedback" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Append Event" data-node-tag="CaseService" data-node-context="Case API &amp; In-Memory Repositories › Analyst Feedback">
           <title>POST /cases/{case_id}/feedback · Append Event · Case API &amp; In-Memory Repositories › Analyst Feedback · CaseService</title>
           <rect x="929.5999999999999" y="212" width="216" height="68" rx="6" class="c-mask"/>
-          <rect x="929.5999999999999" y="212" width="216" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <rect x="929.5999999999999" y="212" width="216" height="68" rx="6" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(935.5999999999999 218) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -443,7 +443,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-deepseek_gen" data-node-id="deepseek_gen" data-node-label="DeepSeek Reasoner" tabindex="0" role="button" aria-label="Focus DeepSeek Reasoner, Budgeted Model, Guarded DeepSeek Pipeline › Guarded Reasoning" aria-pressed="false" data-node-kind="security" data-node-sublabel="Budgeted Model" data-node-tag="Fail-Closed" data-node-context="Guarded DeepSeek Pipeline › Guarded Reasoning">
           <title>DeepSeek Reasoner · Budgeted Model · Guarded DeepSeek Pipeline › Guarded Reasoning · Fail-Closed</title>
           <rect x="604" y="338" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="604" y="338" width="136" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <rect x="604" y="338" width="136" height="68" rx="6" class="c-security" data-animate="node" style="--step:3" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(610 344) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
@@ -456,7 +456,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-citation_val" data-node-id="citation_val" data-node-label="Validate Citations" tabindex="0" role="button" aria-label="Focus Validate Citations, Evidence Check, Guarded DeepSeek Pipeline › Guarded Reasoning" aria-pressed="false" data-node-kind="security" data-node-sublabel="Evidence Check" data-node-tag="Fail-Closed" data-node-context="Guarded DeepSeek Pipeline › Guarded Reasoning">
           <title>Validate Citations · Evidence Check · Guarded DeepSeek Pipeline › Guarded Reasoning · Fail-Closed</title>
           <rect x="786.8" y="338" width="136" height="68" rx="6" class="c-mask"/>
-          <rect x="786.8" y="338" width="136" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <rect x="786.8" y="338" width="136" height="68" rx="6" class="c-security" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(792.8 344) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
