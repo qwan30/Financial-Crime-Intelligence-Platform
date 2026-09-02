@@ -1,0 +1,99 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── TẦNG 1: KIỂM TRA NHANH & LINT/TYPES ───
+  quality-gate:
+    name: Code Quality (Format, Lint, Types)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv (Fast Python toolchain)
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Run code quality checks
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            uv run ruff format --check .
+            uv run ruff check .
+            if [ -d "src" ]; then
+              uv run mypy src
+            fi
+          else
+            echo "No pyproject.toml yet - running git diff checks per AGENTS.md"
+            git diff --check
+          fi
+
+  # ─── TẦNG 2: KIỂM THỬ ĐỘC LẬP (Unit & Integration) ───
+  test-suite:
+    name: Test Suite (Unit & Integration)
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Run Pytest (Unit & Integration)
+        run: |
+          if [ -f "pyproject.toml" ] && [ -d "tests" ]; then
+            uv run pytest -q --tb=short
+          else
+            echo "Tests directory or pyproject.toml not present yet, skipping pytest."
+          fi
+
+  # ─── TẦNG 3: BUILD PACKAGES & FRONTEND ───
+  build-gate:
+    name: Build Verification
+    needs: test-suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Build Python packages
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            uv build
+          fi
+
+      - name: Setup Node.js (if frontend exists)
+        if: hashFiles('apps/investigator-web/package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: apps/investigator-web/package-lock.json
+
+      - name: Build Web App (if present)
+        if: hashFiles('apps/investigator-web/package.json') != ''
+        run: |
+          cd apps/investigator-web
+          npm ci
+          npm test -- --run
+          npm run build

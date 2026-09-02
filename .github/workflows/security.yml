@@ -1,0 +1,77 @@
+name: Security & Vulnerability Scan
+
+on:
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 1' # Weekly scan every Monday
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── 1. SECRET SCANNING (Gitleaks) ───
+  secret-scan:
+    name: Secret Leak Detection (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── 2. DEPENDENCY AUDIT (pip-audit on project) ───
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Audit Python dependencies
+        run: |
+          if [ -f "uv.lock" ]; then
+            uvx pip-audit . --locked
+          elif [ -f "pyproject.toml" ]; then
+            uvx pip-audit .
+          elif [ -f "requirements.txt" ]; then
+            uvx pip-audit -r requirements.txt
+          else
+            echo "No Python dependency manifests found, skipping dependency audit."
+          fi
+
+  # ─── 3. STATIC SECURITY ANALYSIS (Bandit SAST) ───
+  sast-scan:
+    name: Static Application Security Testing (Bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Run Bandit on Python source
+        run: |
+          if [ -d "src" ]; then
+            uvx bandit -r src/ -ll -q
+          else
+            echo "src/ directory not present yet, skipping Bandit SAST."
+          fi

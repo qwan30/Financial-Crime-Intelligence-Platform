@@ -1,0 +1,52 @@
+name: Gemini PR review
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: gemini-pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event.pull_request.head.repo.fork == false &&
+      github.event.pull_request.draft == false
+    name: Advisory Gemini review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check Gemini configuration
+        id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [[ -n "$GEMINI_API_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Review internal pull request
+        if: steps.gemini.outputs.configured == 'true'
+        uses: the-pr-agent/pr-agent@46d7ee02b77bc1f323c327e32be4ee70e4cd306a
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          config.model: gemini/gemini-1.5-flash
+          config.fallback_models: '["gemini/gemini-1.5-flash"]'
+          config.restricted_mode: "true"
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
