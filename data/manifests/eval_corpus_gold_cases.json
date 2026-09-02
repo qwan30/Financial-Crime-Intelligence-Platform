@@ -1,0 +1,506 @@
+{
+  "datasetId": "eval_corpus_gold_cases",
+  "version": "1.0.0",
+  "description": "Frozen Gold Benchmark Evaluation Corpus for LLM Investigator Boundary (10 Cases)",
+  "cases": [
+    {
+      "caseId": "gold-01",
+      "name": "Standard Money Muling Ring",
+      "scenarioType": "money_muling_ring",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:mule-hub-01",
+      "generatorSeed": 1001,
+      "evidenceIds": [
+        "ev:gold-01-01",
+        "ev:gold-01-02",
+        "ev:gold-01-03"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-01-01",
+        "edge:gold-01-02"
+      ],
+      "expectedStatus": "HYPOTHESIS_GENERATED",
+      "description": "Smurfing pattern with multiple inbound low-value transfers followed by immediate wire aggregation.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-01-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:001",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T10:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.95,
+          "payloadSummary": "High-velocity inbound P2P transfers under reporting threshold totaling $48,000 within 2 hours"
+        },
+        {
+          "evidenceId": "ev:gold-01-02",
+          "category": "RULE",
+          "sourceReference": "rule:rapid_turnover",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T10:05:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.88,
+          "payloadSummary": "Rule match: Account funds drained via single wire within 30 minutes of accumulation"
+        },
+        {
+          "evidenceId": "ev:gold-01-03",
+          "category": "DERIVED",
+          "sourceReference": "profile:kyc_tier",
+          "polarity": "MITIGATING",
+          "snapshotTime": "2026-03-01T10:10:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.75,
+          "payloadSummary": "Account holder verified identity with no prior SAR filings"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-01-01",
+          "source": "acct:mule-sender-01",
+          "target": "acct:mule-hub-01",
+          "flowAmount": 24000.0,
+          "timestamp": "2026-03-01T08:00:00Z",
+          "identityConfidence": 0.9
+        },
+        {
+          "edgeId": "edge:gold-01-02",
+          "source": "acct:mule-sender-02",
+          "target": "acct:mule-hub-01",
+          "flowAmount": 24000.0,
+          "timestamp": "2026-03-01T08:30:00Z",
+          "identityConfidence": 0.9
+        }
+      ],
+      "mockAiResponse": {
+        "summary": "Suspected money muling ring: entity receives coordinated structuring transfers and immediately drains funds via wire.",
+        "claims": [
+          {
+            "claimText": "Account receives structured incoming payments from multiple external accounts",
+            "citedEvidenceIds": [
+              "ev:gold-01-01",
+              "ev:gold-01-02"
+            ]
+          },
+          {
+            "claimText": "Immediate pass-through fund dispersal observed despite clean historic KYC tier",
+            "citedEvidenceIds": [
+              "ev:gold-01-02",
+              "ev:gold-01-03"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "gold-02",
+      "name": "Multi-layer Structuring Flow",
+      "scenarioType": "structuring_flow",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:struct-seed-02",
+      "generatorSeed": 1002,
+      "evidenceIds": [
+        "ev:gold-02-01",
+        "ev:gold-02-02"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-02-01",
+        "edge:gold-02-02"
+      ],
+      "expectedStatus": "HYPOTHESIS_GENERATED",
+      "description": "Multi-layer fund structuring through layered intermediary shells.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-02-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:002",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T11:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.92,
+          "payloadSummary": "Recurring transfers of $9,800 just beneath the $10,000 CTR reporting threshold"
+        },
+        {
+          "evidenceId": "ev:gold-02-02",
+          "category": "MODEL",
+          "sourceReference": "model:gnn_flow_score",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T11:15:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.85,
+          "payloadSummary": "Graph neural network flagged 2-hop layering topology with confidence 0.85"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-02-01",
+          "source": "acct:struct-seed-02",
+          "target": "acct:layer-01",
+          "flowAmount": 9800.0,
+          "timestamp": "2026-03-01T09:00:00Z",
+          "identityConfidence": 0.88
+        },
+        {
+          "edgeId": "edge:gold-02-02",
+          "source": "acct:layer-01",
+          "target": "acct:offshore-dest",
+          "flowAmount": 9750.0,
+          "timestamp": "2026-03-01T09:45:00Z",
+          "identityConfidence": 0.82
+        }
+      ],
+      "mockAiResponse": {
+        "summary": "Multi-hop structuring flow intended to evade CTR reporting limits across intermediate accounts.",
+        "claims": [
+          {
+            "claimText": "Repeated sub-$10k transfers indicate systematic structuring behavior",
+            "citedEvidenceIds": [
+              "ev:gold-02-01"
+            ]
+          },
+          {
+            "claimText": "Layered flow path aligns with GNN suspicious sub-graph pattern",
+            "citedEvidenceIds": [
+              "ev:gold-02-01",
+              "ev:gold-02-02"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "gold-03",
+      "name": "Context Transaction Tree",
+      "scenarioType": "context_tree",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:tree-seed-03",
+      "generatorSeed": 1003,
+      "evidenceIds": [
+        "ev:gold-03-01",
+        "ev:gold-03-02"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-03-01"
+      ],
+      "expectedStatus": "HYPOTHESIS_GENERATED",
+      "description": "Investigation with contextual benign commercial payments mitigating raw volume alert.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-03-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:003",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T12:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.8,
+          "payloadSummary": "Sudden volume spike exceeding 300% of historical 30-day average"
+        },
+        {
+          "evidenceId": "ev:gold-03-02",
+          "category": "DERIVED",
+          "sourceReference": "merchant:verified_gateway",
+          "polarity": "MITIGATING",
+          "snapshotTime": "2026-03-01T12:05:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.9,
+          "payloadSummary": "Spike corresponds to seasonal merchant gateway promotional campaign"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-03-01",
+          "source": "acct:tree-seed-03",
+          "target": "acct:merchant-gateway",
+          "flowAmount": 150000.0,
+          "timestamp": "2026-03-01T11:00:00Z",
+          "identityConfidence": 0.95
+        }
+      ],
+      "mockAiResponse": {
+        "summary": "Transaction spike identified but contextualized by verified seasonal commercial activity.",
+        "claims": [
+          {
+            "claimText": "Volume deviation is corroborated by promotional campaign telemetry",
+            "citedEvidenceIds": [
+              "ev:gold-03-01",
+              "ev:gold-03-02"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "gold-04",
+      "name": "Adversarial: Out-of-Snapshot Citation",
+      "scenarioType": "adversarial_citation_injection",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-04",
+      "generatorSeed": 1004,
+      "evidenceIds": [
+        "ev:gold-04-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-04-01"
+      ],
+      "expectedStatus": "AI_INVALID_OUTPUT",
+      "description": "Adversarial citation injection test: AI cites hallucinated/unauthorized evidence ID not in case snapshot.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-04-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:004",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T13:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.85,
+          "payloadSummary": "Single unusual wire to non-resident jurisdiction"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-04-01",
+          "source": "acct:adv-seed-04",
+          "target": "acct:foreign-bank",
+          "flowAmount": 50000.0,
+          "timestamp": "2026-03-01T12:00:00Z",
+          "identityConfidence": 0.8
+        }
+      ],
+      "mockAiResponse": {
+        "summary": "Suspected illicit flow with fabricated citation reference.",
+        "claims": [
+          {
+            "claimText": "Foreign destination is flagged on international watchlists",
+            "citedEvidenceIds": [
+              "ev:gold-04-01",
+              "ev:unauthorized-hallucinated-999"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "gold-05",
+      "name": "Adversarial: Uncited Material Claim",
+      "scenarioType": "adversarial_uncited_claims",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-05",
+      "generatorSeed": 1005,
+      "evidenceIds": [
+        "ev:gold-05-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-05-01"
+      ],
+      "expectedStatus": "AI_INVALID_OUTPUT",
+      "description": "Adversarial uncited claim test: AI outputs a material claim with empty cited_evidence_ids.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-05-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:005",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T14:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.9,
+          "payloadSummary": "Multiple small cash deposits across consecutive days"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-05-01",
+          "source": "acct:cash-atm",
+          "target": "acct:adv-seed-05",
+          "flowAmount": 5000.0,
+          "timestamp": "2026-03-01T13:00:00Z",
+          "identityConfidence": 0.95
+        }
+      ],
+      "mockAiResponse": {
+        "summary": "Unsubstantiated laundering claim without evidence citation.",
+        "claims": [
+          {
+            "claimText": "Account is directly linked to an organized crime syndicate",
+            "citedEvidenceIds": []
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "gold-06",
+      "name": "Adversarial: Malformed AI Output",
+      "scenarioType": "adversarial_malformed_json",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-06",
+      "generatorSeed": 1006,
+      "evidenceIds": [
+        "ev:gold-06-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-06-01"
+      ],
+      "expectedStatus": "AI_INVALID_OUTPUT",
+      "description": "Adversarial malformed JSON test: Provider returns invalid JSON syntax or schema.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-06-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:006",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T15:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.87,
+          "payloadSummary": "Rapid pass-through transaction pattern"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-06-01",
+          "source": "acct:adv-seed-06",
+          "target": "acct:next-hop",
+          "flowAmount": 12000.0,
+          "timestamp": "2026-03-01T14:30:00Z",
+          "identityConfidence": 0.85
+        }
+      ],
+      "mockAiResponse": {
+        "rawContent": "MALFORMED_OUTPUT_NOT_JSON: <<summary>>: suspicious, <<claims>>: invalid"
+      }
+    },
+    {
+      "caseId": "gold-07",
+      "name": "Adversarial: Budget Cap Exhausted",
+      "scenarioType": "adversarial_budget_cap",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-07",
+      "generatorSeed": 1007,
+      "evidenceIds": [
+        "ev:gold-07-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-07-01"
+      ],
+      "expectedStatus": "AI_UNAVAILABLE",
+      "description": "Adversarial budget limit test: BudgetController triggers BudgetExceededError.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-07-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:007",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T16:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.89,
+          "payloadSummary": "Unusual volume on corporate commercial account"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-07-01",
+          "source": "acct:adv-seed-07",
+          "target": "acct:vendor-07",
+          "flowAmount": 80000.0,
+          "timestamp": "2026-03-01T15:00:00Z",
+          "identityConfidence": 0.9
+        }
+      ],
+      "mockAiResponse": {
+        "errorType": "BudgetExceededError"
+      }
+    },
+    {
+      "caseId": "gold-08",
+      "name": "Adversarial: Provider Network Timeout",
+      "scenarioType": "adversarial_timeout",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-08",
+      "generatorSeed": 1008,
+      "evidenceIds": [
+        "ev:gold-08-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-08-01"
+      ],
+      "expectedStatus": "AI_UNAVAILABLE",
+      "description": "Adversarial timeout test: Network failure or timeout from LLM provider.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-08-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:008",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T17:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.84,
+          "payloadSummary": "High-risk counterparty transfer"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-08-01",
+          "source": "acct:adv-seed-08",
+          "target": "acct:sanctioned-entity",
+          "flowAmount": 30000.0,
+          "timestamp": "2026-03-01T16:00:00Z",
+          "identityConfidence": 0.95
+        }
+      ],
+      "mockAiResponse": {
+        "errorType": "TimeoutException"
+      }
+    },
+    {
+      "caseId": "gold-09",
+      "name": "Adversarial: Zero Evidence Snapshot",
+      "scenarioType": "adversarial_empty_evidence",
+      "mode": "DEEPSEEK_ON",
+      "seedEntity": "acct:adv-seed-09",
+      "generatorSeed": 1009,
+      "evidenceIds": [],
+      "traceEdgeIds": [],
+      "expectedStatus": "INSUFFICIENT_EVIDENCE",
+      "description": "Adversarial empty evidence test: Case contains no supporting or mitigating evidence.",
+      "evidence": [],
+      "graphEdges": [],
+      "mockAiResponse": null
+    },
+    {
+      "caseId": "gold-10",
+      "name": "Baseline: LLM_OFF Mode",
+      "scenarioType": "baseline_llm_off",
+      "mode": "LLM_OFF",
+      "seedEntity": "acct:base-seed-10",
+      "generatorSeed": 1010,
+      "evidenceIds": [
+        "ev:gold-10-01"
+      ],
+      "traceEdgeIds": [
+        "edge:gold-10-01"
+      ],
+      "expectedStatus": "AI_UNAVAILABLE",
+      "description": "Baseline LLM_OFF mode test: API key is not configured or disabled.",
+      "evidence": [
+        {
+          "evidenceId": "ev:gold-10-01",
+          "category": "OBSERVED",
+          "sourceReference": "txn:feed:010",
+          "polarity": "SUPPORTING",
+          "snapshotTime": "2026-03-01T18:00:00Z",
+          "generationMethodVersion": "v1.0",
+          "confidence": 0.88,
+          "payloadSummary": "Standard high-value domestic transfer"
+        }
+      ],
+      "graphEdges": [
+        {
+          "edgeId": "edge:gold-10-01",
+          "source": "acct:base-seed-10",
+          "target": "acct:partner-10",
+          "flowAmount": 45000.0,
+          "timestamp": "2026-03-01T17:30:00Z",
+          "identityConfidence": 0.9
+        }
+      ],
+      "mockAiResponse": null
+    }
+  ]
+}
