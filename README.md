@@ -27,11 +27,14 @@ The implemented architecture is organized into three decoupled operating lanes:
 2. **Investigator Workbench & Guarded Agent**: FastAPI case API, in-memory case/evidence stores, bounded graph traversal, React 19/Cytoscape investigator UI, and guarded DeepSeek hypothesis generation.
 3. **Streaming Replay & Quarantine**: Strict envelope parsing, replay state machine, durable JSONL quarantine, and an online graph accumulator validated for offline/online scoring parity.
 
-[![Implemented System Architecture](docs/architecture/archify/implemented-system.svg)](docs/architecture/archify/implemented-system.html)
+[![Implemented System Architecture](docs/architecture/archify/implemented-system.gif)](docs/architecture/archify/implemented-system.html)
 
-*Click the diagram above or open the [Interactive System Architecture Diagram](docs/architecture/archify/implemented-system.html) to explore the live standalone app with **trace motion animation** (live data particles), interactive guided story chapters, component spotlighting, and dark/light theme toggling.*
+> 🎬 **Interactive, Vector & Video Artifacts:**
+> - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/implemented-system.html) — Live canvas with zoom/pan, chapter navigation, component spotlighting, and dark/light theme switching.
+> - 📐 [**View Vector SVG**](docs/architecture/archify/implemented-system.svg) · 🎥 [**Watch WebM Video**](docs/architecture/archify/implemented-system.webm)
 
 ---
+
 ## Investigation & Adjudication Workflow
 
 The forensic workflow bridges automated graph intelligence and human analyst oversight:
@@ -40,11 +43,14 @@ The forensic workflow bridges automated graph intelligence and human analyst ove
 2. **Guarded Hypothesis Generation**: The case snapshot and verified evidence are submitted to DeepSeek Reasoner under strict token budgets. Output is validated against cited evidence IDs. If evidence is missing, budget is exhausted, or citations fail validation, the system fails closed gracefully.
 3. **Analyst Review & Adjudication**: The human investigator examines the interactive graph topology, reviews supporting/mitigating evidence, evaluates the AI hypothesis, and submits disposition via `POST /cases/{case_id}/feedback`.
 
-[![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.svg)](docs/architecture/archify/investigation-workflow.html)
+[![Investigation & Adjudication Workflow](docs/architecture/archify/investigation-workflow.gif)](docs/architecture/archify/investigation-workflow.html)
 
-*Click the diagram above or open the [Interactive Investigation Workflow Diagram](docs/architecture/archify/investigation-workflow.html) to step through animated state transitions, trace prompt/evidence flows, inspect fail-closed branches, and explore interactive focus views.*
+> 🎬 **Interactive, Vector & Video Artifacts:**
+> - 🌐 [**Open Interactive HTML App**](docs/architecture/archify/investigation-workflow.html) — Step through animated state transitions, trace prompt/evidence flows, and inspect fail-closed branches.
+> - 📐 [**View Vector SVG**](docs/architecture/archify/investigation-workflow.svg) · 🎥 [**Watch WebM Video**](docs/architecture/archify/investigation-workflow.webm)
 
 ---
+
 ## Implemented Capabilities
 
 | Subsystem | Components / Modules | Implemented Capability |
