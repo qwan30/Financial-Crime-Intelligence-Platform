@@ -4,7 +4,7 @@
 
 **Goal:** Implement Phase 10–12 of the Financial Crime Intelligence Platform: local MLflow tracking with internal read-back verification, canonical streaming event envelopes with exact second UTC precision, deeply immutable replay state with validated transitions, true offline/online feature scoring parity with neighbor-grouped cumulative accumulation matching NetworkX edge iteration, local container infrastructure with dual internal/external Kafka listeners, broker replay with coordinate-aware true duplicate no-ops, durable JSONL poison quarantine and partition commit barriers, validated fitted PSI drift bin contracts with finite interior machine-precision monotonicity across all baseline magnitudes, status-specific exact-inventory release manifest builder/verifier with repository-derived HEAD (and test-only resolver injection), and local release runbook verification under mandatory `rtk` command discipline.
 
-**Architecture:** 
+**Architecture:**
 1. **MLflow Tracking:** Frozen runs are tracked to local MLflow with verified lowercase 40/64-hex artifact hashes and isolated client state, failing closed internally if read-back verification fails.
 2. **Canonical Event Model:** Streaming events enforce canonical compact JSON formatting, strict UTC timestamps with zero microseconds (`%Y-%m-%dT%H:%M:%SZ`), and lowercase 64-hex SHA-256 payload integrity.
 3. **True Incremental Scoring Parity:** `OnlineGraphAccumulator` maintains direct, neighbor-grouped cumulative edge sequences `incoming_neighbor_edges` and `outgoing_neighbor_edges` preserving neighbor-first insertion order. Ingestion strictly enforces canonical monotonic `(event_time, edge_id)` ordering and duplicate `edge_id` rejection matching `build_graph`. Feature extraction iterates neighbor groups in exact NetworkX `MultiDiGraph` iteration order (`_pred[u]` and `_succ[u]`), passing the exact sequence of float amounts to `sum()`, guaranteeing 100% bitwise exact parity against the production offline graph oracle (`build_graph(events, cutoff=cutoff)` + `account_features(graph, account_id)`).
@@ -123,10 +123,10 @@ def test_log_frozen_run_records_and_reads_back_cleanly(tmp_path: Path) -> None:
     tracking_uri = f"sqlite:///{tmp_path / 'mlflow.db'}"
     tags = tracking_tags("a" * 40, "b" * 64, "c" * 64)
     metrics = {"roc_auc": 0.885, "pr_auc": 0.652}
-    
+
     run_id = log_frozen_run(tags, metrics, tracking_uri=tracking_uri, experiment_name="test_frozen")
     assert isinstance(run_id, str) and len(run_id) > 0
-    
+
     meta = get_run_metadata(run_id, tracking_uri=tracking_uri)
     assert meta["tags"]["git_sha"] == "a" * 40
     assert meta["tags"]["dataset_hash"] == "b" * 64
@@ -278,10 +278,10 @@ def test_valid_transaction_envelope_canonical_hash_and_golden_bytes() -> None:
     )
     assert env.schema_version == "1"
     assert env.amount == 1500000.0
-    
+
     expected_bytes = b'{"amount":1500000.0,"event_id":"evt_tx_001","event_time":"2026-09-02T12:00:00Z","schema_version":"1","source_id":"acc_source_1","source_offset":105,"source_partition":0,"target_id":"acc_target_2"}'
     assert env.to_canonical_bytes() == expected_bytes
-    
+
     h1 = env.canonical_hash()
     assert len(h1) == 64
     assert h1 == h1.lower()

@@ -6,7 +6,7 @@
 
 **Architecture:** A 5-phase progressive verification pipeline that isolates merged worktree pruning first, applies Ponytail simplification ladder (YAGNI, minimal diff, reuse) across Python and React workspaces, audits CLAUDE.md/AGENTS.md invariants, and gates readiness with full unit/integration/E2E test runs.
 
-**Tech Stack:** 
+**Tech Stack:**
 - Python 3.12 (`uv`, `pytest`, `ruff`, `mypy`, FastAPI, LangGraph, MLflow, Prometheus)
 - TypeScript / React 19 (`vite`, `vitest`, `@playwright/test`, `cytoscape.js`)
 - Git / Worktrees & RTK CLI toolchain

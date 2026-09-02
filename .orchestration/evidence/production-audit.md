@@ -1,7 +1,7 @@
 # Phase 5: QA/QC, Playwright Automation & Production Audit Report (Full Platform v4.0)
 
 ## 1. Executive Summary
-- **Subsystems:** 
+- **Subsystems:**
   - Plan 1: Research Foundation & Tracing (Phases 0–6)
   - Plan 2: Detection Pilot Data Intake (Tasks 1–7)
   - Plan 3: Investigator Workbench & DeepSeek Hypotheses (Phases 7–9)
