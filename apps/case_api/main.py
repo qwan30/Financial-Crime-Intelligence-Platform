@@ -182,6 +182,18 @@ class WorkbenchData(BaseDTO):
     pins: list[PinnedEvidenceResponse] = Field(default_factory=list)
     pinning_available: bool = False
     hypothesis_snapshot_hash: str | None = None
+class GenerateHypothesisRequest(BaseDTO):
+    snapshot_hash: str
+
+
+class GenerateHypothesisResult(BaseDTO):
+    snapshot_hash: str
+    hypothesis: HypothesisResponse
+
+
+HypothesisEnvelope = Annotated[
+    SuccessEnvelope[GenerateHypothesisResult] | ErrorEnvelope, Field(discriminator="success")
+]
 
 
 CaseEnvelope = Annotated[
@@ -254,8 +266,10 @@ def create_app(
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        import threading
         resolved_db_url = database_url or os.getenv("DATABASE_URL")
         engine = None
+        http_client = None
         if (case_service is None and evidence_store is None and graph_repo is None) and resolved_db_url:
             from sqlalchemy import create_engine, text
             from fincrime.storage.postgres import (
@@ -287,17 +301,52 @@ def create_app(
             app.state.engine = None
             app.state.pinning_available = False
 
+        if deepseek_provider is not None:
+            app.state.deepseek_provider = deepseek_provider
+        else:
+            api_key_str = os.getenv("DEEPSEEK_API_KEY")
+            if api_key_str:
+                import httpx
+                from pydantic import SecretStr
+                from fincrime.agent.deepseek import GuardedDeepSeekProvider
+                from fincrime.agent.settings import BudgetController, DeepSeekSettings
+                model_name = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+                ds_settings = DeepSeekSettings(
+                    api_key=SecretStr(api_key_str),
+                    model_name=model_name,
+                )
+                budget_ctrl = BudgetController(settings=ds_settings)
+                http_client = httpx.Client(timeout=ds_settings.timeout_seconds)
+                app.state.settings = ds_settings
+                app.state.deepseek_provider = GuardedDeepSeekProvider(
+                    settings=ds_settings,
+                    budget_controller=budget_ctrl,
+                    client=http_client,
+                )
+            else:
+                app.state.deepseek_provider = None
+
         yield
 
+        if http_client is not None:
+            http_client.close()
         if engine is not None:
             engine.dispose()
 
     application = FastAPI(title="Case API", version="0.1.0", lifespan=lifespan)
 
+    import threading
     ev_store = evidence_store or EvidenceStore()
     application.state.evidence_store = ev_store
     application.state.case_service = case_service or CaseService(evidence_store=ev_store)
     application.state.graph_repo = graph_repo or InMemoryGraphRepository()
+    application.state.settings = settings or DeepSeekSettings()
+    application.state.deepseek_provider = deepseek_provider
+    application.state.pinning_available = False
+    application.state.engine = None
+    application.state.hypothesis_cache = {}
+    application.state.in_flight_locks = {}
+    application.state.global_cache_lock = threading.Lock()
     application.state.settings = settings or DeepSeekSettings()
     application.state.deepseek_provider = deepseek_provider
     application.state.pinning_available = False
@@ -597,6 +646,15 @@ def create_app(
             for p in pinned_case.pins
         ]
 
+        # Invalidate older cached revisions for this case
+        cache_lock = getattr(request.app.state, "global_cache_lock", None)
+        cache = getattr(request.app.state, "hypothesis_cache", None)
+        if cache_lock is not None and cache is not None:
+            with cache_lock:
+                keys_to_del = [k for k in cache if k[0] == case_id]
+                for k in keys_to_del:
+                    del cache[k]
+
         return SuccessEnvelope[PinEvidenceResult](
             data=PinEvidenceResult(
                 new_snapshot_hash=cs.snapshot_hash,
@@ -696,6 +754,141 @@ def create_app(
             unknown_time_edge_count=trace_res.unknown_time_edge_count,
         )
         return SuccessEnvelope[TraceGraphResponse](data=trace_resp)
+
+
+    @application.post("/cases/{case_id}/hypothesis", response_model=HypothesisEnvelope)
+    def generate_hypothesis(
+        case_id: str,
+        body: GenerateHypothesisRequest,
+        request: Request,
+        service: CaseServiceDep,
+        ev_store_dep: EvidenceStoreDep,
+        graph_repo_dep: GraphRepoDep,
+        settings_dep: SettingsDep,
+    ) -> Any:
+        import threading
+        pinning_available = getattr(request.app.state, "pinning_available", False)
+        engine = getattr(request.app.state, "engine", None)
+
+        try:
+            if pinning_available and engine is not None:
+                from fincrime.cases.pinning import PinningService
+                pin_svc = PinningService(engine)
+                pinned_case = pin_svc.read(case_id)
+                cs = pinned_case.case
+                pinned_ids = tuple(p.evidence_id for p in pinned_case.pins)
+            else:
+                cs = service.get(case_id)
+                pinned_ids = ()
+        except CaseNotFound:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "CASE_NOT_FOUND", "message": f"Case not found: {case_id}"},
+                },
+            )
+
+        # Validate snapshot hash before provider invocation
+        if body.snapshot_hash != cs.snapshot_hash:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {
+                        "code": "SNAPSHOT_CONFLICT",
+                        "message": f"Snapshot hash conflict: expected {cs.snapshot_hash}, got {body.snapshot_hash}",
+                    },
+                },
+            )
+
+        cache_key = (case_id, cs.snapshot_hash)
+        global_lock: threading.Lock = request.app.state.global_cache_lock
+        cache: dict[tuple[str, str], HypothesisResponse] = request.app.state.hypothesis_cache
+        locks: dict[tuple[str, str], threading.Lock] = request.app.state.in_flight_locks
+
+        with global_lock:
+            if cache_key in cache:
+                return SuccessEnvelope(
+                    data=GenerateHypothesisResult(
+                        snapshot_hash=cs.snapshot_hash,
+                        hypothesis=cache[cache_key],
+                    )
+                )
+            if cache_key not in locks:
+                locks[cache_key] = threading.Lock()
+            key_lock = locks[cache_key]
+
+        with key_lock:
+            with global_lock:
+                if cache_key in cache:
+                    return SuccessEnvelope(
+                        data=GenerateHypothesisResult(
+                            snapshot_hash=cs.snapshot_hash,
+                            hypothesis=cache[cache_key],
+                        )
+                    )
+
+            from fincrime.agent.workflow import investigate_case_workflow
+            provider = getattr(request.app.state, "deepseek_provider", None)
+            res = investigate_case_workflow(
+                case_id=case_id,
+                case_service=service,
+                evidence_store=ev_store_dep,
+                graph_repo=graph_repo_dep,
+                settings=settings_dep,
+                deepseek_provider=provider,
+                case_snapshot=cs,
+                pinned_evidence_ids=pinned_ids,
+            )
+
+            # Recheck current case hash before caching
+            if pinning_available and engine is not None:
+                from fincrime.cases.pinning import PinningService
+                rechecked = PinningService(engine).read(case_id)
+                if rechecked.case.snapshot_hash != cs.snapshot_hash:
+                    return JSONResponse(
+                        status_code=status.HTTP_409_CONFLICT,
+                        content={
+                            "success": False,
+                            "data": None,
+                            "error": {
+                                "code": "SNAPSHOT_CONFLICT",
+                                "message": "Case snapshot hash changed during hypothesis generation",
+                            },
+                        },
+                    )
+
+            hyp_resp = HypothesisResponse(
+                hypothesis_id=res.hypothesis_id,
+                case_id=res.case_id,
+                status=res.status.value,
+                summary=res.summary,
+                claims=[
+                    MaterialClaimResponse(
+                        claim_text=c.claim_text,
+                        cited_evidence_ids=list(c.cited_evidence_ids),
+                    )
+                    for c in res.claims
+                ],
+                generated_at=res.generated_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                model_version=res.model_version,
+            )
+
+            with global_lock:
+                keys_to_del = [k for k in cache if k[0] == case_id]
+                for k in keys_to_del:
+                    del cache[k]
+                cache[cache_key] = hyp_resp
+
+            return SuccessEnvelope(
+                data=GenerateHypothesisResult(
+                    snapshot_hash=cs.snapshot_hash,
+                    hypothesis=hyp_resp,
+                )
+            )
 
     @application.get("/cases/{case_id}/workbench", response_model=WorkbenchEnvelope)
     def get_workbench(
@@ -804,16 +997,29 @@ def create_app(
             )
 
             ai_status = "INSUFFICIENT_EVIDENCE" if not cs.evidence_ids else "AI_UNAVAILABLE"
-            ai_summary = "AI provider disabled (LLM_OFF mode)"
-            hyp_resp = HypothesisResponse(
-                hypothesis_id=f"hyp-avail-{cs.case_id}",
-                case_id=cs.case_id,
-                status=ai_status,
-                summary=ai_summary,
-                claims=[],
-                generated_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                model_version=None,
-            )
+            cache = getattr(request.app.state, "hypothesis_cache", {})
+            cache_key = (case_id, cs.snapshot_hash)
+            if cache_key in cache:
+                hyp_resp = cache[cache_key]
+                hyp_hash = cs.snapshot_hash
+            else:
+                ai_status = "INSUFFICIENT_EVIDENCE" if not cs.evidence_ids else "AI_UNAVAILABLE"
+                ai_summary = (
+                    "AI provider disabled (LLM_OFF mode)"
+                    if getattr(request.app.state, "deepseek_provider", None) is None
+                    or getattr(settings_dep, "api_key", None) is None
+                    else "Hypothesis not generated for this snapshot"
+                )
+                hyp_resp = HypothesisResponse(
+                    hypothesis_id=f"hyp-avail-{cs.case_id}",
+                    case_id=cs.case_id,
+                    status=ai_status,
+                    summary=ai_summary,
+                    claims=[],
+                    generated_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    model_version=None,
+                )
+                hyp_hash = None
 
             return SuccessEnvelope[WorkbenchData](
                 data=WorkbenchData(
@@ -823,7 +1029,7 @@ def create_app(
                     hypothesis=hyp_resp,
                     pins=pins_resp,
                     pinning_available=pinning_available,
-                    hypothesis_snapshot_hash=None,
+                    hypothesis_snapshot_hash=hyp_hash,
                 )
             )
         except CaseNotFound:
