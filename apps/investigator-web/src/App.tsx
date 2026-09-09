@@ -3,82 +3,91 @@ import { fetchWorkbenchData, WorkbenchData } from "./api";
 import { CaseWorkspace } from "./CaseWorkspace";
 
 export function App() {
-  const [caseId, setCaseId] = useState("case_001");
-  const [inputCaseId, setInputCaseId] = useState("case_001");
+  const [caseId, setCaseId] = useState("canvas_vn_01");
+  const [inputCaseId, setInputCaseId] = useState("canvas_vn_01");
   const [workbenchData, setWorkbenchData] = useState<WorkbenchData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
+    setIsLoading(true);
+    setError(null);
+    setWorkbenchData(null); // Clear stale payload on load start
 
-    async function loadData() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await fetchWorkbenchData(caseId);
-        if (!isCancelled) {
-          if (res.success) {
-            setWorkbenchData(res.data);
-          } else {
-            setError(res.error.message || "Failed to load case workbench");
-            setWorkbenchData(null);
-          }
+    fetchWorkbenchData(caseId, "", controller.signal)
+      .then((res) => {
+        if (res.success) {
+          setWorkbenchData(res.data);
+        } else {
+          setError(res.error.message || "Failed to load case workbench");
         }
-      } catch (err: unknown) {
-        if (!isCancelled) {
-          const msg = err instanceof Error ? err.message : "Network error fetching workbench";
-          setError(msg);
-          setWorkbenchData(null);
-        }
-      } finally {
-        if (!isCancelled) {
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setError(msg);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
-      }
-    }
-
-    loadData();
+      });
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, [caseId]);
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f1f5f9" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: "auto minmax(0, 1fr)",
+        height: "100dvh",
+        width: "100vw",
+        overflow: "hidden",
+        backgroundColor: "#07090e",
+        color: "#f8fafc",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
+    >
+      {/* Navigation Header */}
       <nav
         style={{
           backgroundColor: "#0f172a",
           color: "#ffffff",
-          padding: "12px 24px",
+          padding: "10px 20px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
           gap: "12px",
+          borderBottom: "1px solid #1e293b",
+          zIndex: 20,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <span
             style={{
               fontWeight: 700,
-              fontSize: "18px",
+              fontSize: "17px",
               letterSpacing: "-0.5px",
+              color: "#38bdf8",
             }}
           >
             Investigator Workbench
           </span>
           <span
             style={{
-              fontSize: "12px",
+              fontSize: "11px",
               background: "#1e293b",
               padding: "2px 8px",
               borderRadius: "4px",
               color: "#94a3b8",
             }}
           >
-            v0.2.0-beta
+            Forensic Canvas v1.0
           </span>
         </div>
 
@@ -95,7 +104,7 @@ export function App() {
             type="text"
             value={inputCaseId}
             onChange={(e) => setInputCaseId(e.target.value)}
-            placeholder="Enter Case ID (e.g. case_001)"
+            placeholder="Mã vụ án (VD: canvas_vn_01)"
             aria-label="Case ID"
             style={{
               padding: "6px 12px",
@@ -103,7 +112,7 @@ export function App() {
               border: "1px solid #334155",
               backgroundColor: "#1e293b",
               color: "#ffffff",
-              fontSize: "14px",
+              fontSize: "13px",
             }}
           />
           <button
@@ -114,8 +123,8 @@ export function App() {
               border: "none",
               backgroundColor: "#2563eb",
               color: "#ffffff",
-              fontSize: "14px",
-              fontWeight: 500,
+              fontSize: "13px",
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
@@ -124,30 +133,46 @@ export function App() {
         </form>
       </nav>
 
+      {/* Workspace Area */}
       {error ? (
-        <main style={{ padding: "24px", maxWidth: "800px", margin: "40px auto", textAlign: "center" }}>
+        <main
+          style={{
+            padding: "24px",
+            maxWidth: "800px",
+            margin: "40px auto",
+            textAlign: "center",
+          }}
+        >
           <div
             style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
+              background: "#131b2e",
+              border: "1px solid #f43f5e",
               borderRadius: "8px",
               padding: "24px",
-              color: "#991b1b",
             }}
           >
-            <h2 style={{ margin: "0 0 8px 0", fontSize: "20px" }}>Error Loading Case: {caseId}</h2>
-            <p style={{ margin: 0, fontSize: "14px" }}>{error}</p>
+            <h3 style={{ color: "#f43f5e", margin: "0 0 8px 0" }}>
+              Lỗi tải hồ sơ vụ án
+            </h3>
+            <p style={{ color: "#cbd5e1", margin: 0 }}>{error}</p>
           </div>
         </main>
       ) : workbenchData ? (
         <CaseWorkspace
+          key={workbenchData.case.caseId}
           workbenchData={workbenchData}
-          isLoading={isLoading}
-          error={null}
         />
       ) : (
-        <main style={{ padding: "24px", maxWidth: "800px", margin: "40px auto", textAlign: "center" }}>
-          <p style={{ color: "#64748b" }}>Loading case workbench...</p>
+        <main
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            color: "#64748b",
+          }}
+        >
+          <p>{isLoading ? "Đang tải dữ liệu hồ sơ..." : "Chưa tải vụ án"}</p>
         </main>
       )}
     </div>

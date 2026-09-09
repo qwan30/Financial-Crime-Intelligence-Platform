@@ -321,14 +321,17 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
       updateAnnotations();
     });
 
-    const ro = new ResizeObserver(() => {
-      cy.resize();
-      updateAnnotations();
-    });
-    ro.observe(containerRef.current);
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        cy.resize();
+        updateAnnotations();
+      });
+      ro.observe(containerRef.current);
+    }
 
     return () => {
-      ro.disconnect();
+      if (ro) ro.disconnect();
       cy.destroy();
       cyRef.current = null;
     };

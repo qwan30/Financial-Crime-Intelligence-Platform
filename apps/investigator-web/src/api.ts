@@ -271,6 +271,41 @@ export async function expandGraph(
   }
 }
 
+export type HypothesisEnvelope =
+  | SuccessEnvelope<{
+      snapshotHash: string;
+      hypothesis: HypothesisResponse;
+    }>
+  | ErrorEnvelope;
+
+export async function refreshHypothesis(
+  caseId: string,
+  snapshotHash: string,
+  signal?: AbortSignal
+): Promise<HypothesisEnvelope> {
+  const url = `/cases/${encodeURIComponent(caseId)}/hypothesis`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ snapshotHash }),
+      signal,
+    });
+    const json = await res.json();
+    return json as HypothesisEnvelope;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown network error";
+    return {
+      success: false,
+      data: null,
+      error: {
+        code: "REFRESH_HYPOTHESIS_ERROR",
+        message: msg,
+      },
+    };
+  }
+}
+
 export async function fetchCase(
   caseId: string,
   baseUrl = ""

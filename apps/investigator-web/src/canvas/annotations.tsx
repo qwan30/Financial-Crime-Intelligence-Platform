@@ -10,9 +10,12 @@ function getMeasureContext(): CanvasRenderingContext2D | null {
   if (!measureCanvas) {
     measureCanvas = document.createElement("canvas");
   }
-  return measureCanvas.getContext("2d");
+  try {
+    return measureCanvas.getContext("2d");
+  } catch {
+    return null;
+  }
 }
-
 export function measureTextWidth(text: string, font: string): number {
   const ctx = getMeasureContext();
   if (!ctx) return text.length * 8;
