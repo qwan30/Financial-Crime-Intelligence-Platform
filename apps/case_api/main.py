@@ -1,4 +1,6 @@
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+import os
 from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Request, status
@@ -200,8 +202,50 @@ def create_app(
     graph_repo: GraphRepository | None = None,
     settings: DeepSeekSettings | None = None,
     deepseek_provider: Any = None,
+    *,
+    database_url: str | None = None,
 ) -> FastAPI:
-    application = FastAPI(title="Case API", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        resolved_db_url = database_url or os.getenv("DATABASE_URL")
+        engine = None
+        if (case_service is None and evidence_store is None and graph_repo is None) and resolved_db_url:
+            from sqlalchemy import create_engine, text
+            from fincrime.storage.postgres import (
+                PostgresCaseRepository,
+                PostgresEvidenceRepository,
+                PostgresGraphRepository,
+            )
+            try:
+                engine = create_engine(resolved_db_url)
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1 FROM cases LIMIT 1"))
+            except Exception as exc:
+                if engine is not None:
+                    engine.dispose()
+                raise RuntimeError(f"Database connection or schema check failed: {exc}") from exc
+
+            pg_ev_repo = PostgresEvidenceRepository(engine)
+            pg_ev_store = EvidenceStore(repository=pg_ev_repo)
+            pg_case_repo = PostgresCaseRepository(engine)
+            pg_case_service = CaseService(evidence_store=pg_ev_store, repository=pg_case_repo)
+            pg_graph_repo = PostgresGraphRepository(engine)
+
+            app.state.engine = engine
+            app.state.evidence_store = pg_ev_store
+            app.state.case_service = pg_case_service
+            app.state.graph_repo = pg_graph_repo
+            app.state.pinning_available = True
+        else:
+            app.state.engine = None
+            app.state.pinning_available = False
+
+        yield
+
+        if engine is not None:
+            engine.dispose()
+
+    application = FastAPI(title="Case API", version="0.1.0", lifespan=lifespan)
 
     ev_store = evidence_store or EvidenceStore()
     application.state.evidence_store = ev_store
@@ -209,7 +253,8 @@ def create_app(
     application.state.graph_repo = graph_repo or InMemoryGraphRepository()
     application.state.settings = settings or DeepSeekSettings()
     application.state.deepseek_provider = deepseek_provider
-
+    application.state.pinning_available = False
+    application.state.engine = None
     @application.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError

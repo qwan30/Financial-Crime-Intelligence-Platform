@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Sequence
+from typing import Protocol
 
 from fincrime.evidence.models import (
     EvidenceItem,
@@ -17,7 +18,13 @@ class EvidenceNotFound(Exception):
     pass
 
 
-class EvidenceStore:
+class EvidenceRepository(Protocol):
+    def put(self, item: EvidenceItem) -> EvidenceItem: ...
+    def get(self, evidence_id: str) -> EvidenceItem: ...
+    def get_many(self, evidence_ids: Sequence[str]) -> list[EvidenceItem]: ...
+
+
+class InMemoryEvidenceRepository:
     def __init__(self) -> None:
         self._items: dict[str, EvidenceItem] = {}
         self._bytes: dict[str, bytes] = {}
@@ -51,3 +58,23 @@ class EvidenceStore:
                     raise EvidenceNotFound(f"EvidenceItem '{eid}' not found.")
                 results.append(self._items[eid])
             return results
+
+
+class EvidenceStore:
+    def __init__(self, repository: EvidenceRepository | None = None) -> None:
+        self._repo = repository or InMemoryEvidenceRepository()
+
+    @property
+    def _items(self) -> dict[str, EvidenceItem]:
+        if isinstance(self._repo, InMemoryEvidenceRepository):
+            return self._repo._items
+        return {}
+
+    def put(self, item: EvidenceItem) -> EvidenceItem:
+        return self._repo.put(item)
+
+    def get(self, evidence_id: str) -> EvidenceItem:
+        return self._repo.get(evidence_id)
+
+    def get_many(self, evidence_ids: Sequence[str]) -> list[EvidenceItem]:
+        return self._repo.get_many(evidence_ids)
