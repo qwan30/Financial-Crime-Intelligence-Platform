@@ -49,13 +49,26 @@ export type EvidenceResponse = {
   integrityHash: string;
   confidence?: number | null;
 };
+export type TypologyTag =
+  | "SEED_HUB"
+  | "SMURFING"
+  | "SHELL_CORP"
+  | "LAYERING"
+  | "CASHOUT"
+  | "CRYPTO_OTC"
+  | "BENIGN";
+
 
 export type TraceNodeResponse = {
   nodeId: string;
   entityType: string;
-  riskScore?: number | null;
+  riskScore: number | null;
   isSeed: boolean;
   isContext: boolean;
+  accountHolderName: string | null;
+  bankShortName: string | null;
+  accountLast4: string | null;
+  badge: TypologyTag | null;
 };
 
 export type TraceEdgeResponse = {
@@ -65,6 +78,8 @@ export type TraceEdgeResponse = {
   flowAmount: number;
   relationshipType: string;
   identityConfidence: number;
+  currency: string | null;
+  timestamp: string | null;
 };
 
 export type TraceGraphResponse = {
@@ -72,6 +87,10 @@ export type TraceGraphResponse = {
   edges: TraceEdgeResponse[];
   isTruncated: boolean;
   totalHops: number;
+  hopByNodeId: Record<string, number>;
+  timeMin: string | null;
+  timeMax: string | null;
+  unknownTimeEdgeCount: number;
 };
 
 export type MaterialClaimResponse = {

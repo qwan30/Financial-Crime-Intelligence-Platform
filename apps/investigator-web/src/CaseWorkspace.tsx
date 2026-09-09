@@ -289,6 +289,10 @@ export function CaseWorkspace({
           riskScore: index === 0 ? 0.85 : 0.35,
           isSeed: index === 0,
           isContext: index !== 0,
+          accountHolderName: null,
+          bankShortName: null,
+          accountLast4: null,
+          badge: null,
         },
         {
           nodeId: `n${index + 1}`,
@@ -296,6 +300,10 @@ export function CaseWorkspace({
           riskScore: 0.45,
           isSeed: false,
           isContext: false,
+          accountHolderName: null,
+          bankShortName: null,
+          accountLast4: null,
+          badge: null,
         },
       ]),
       edges: edgeIds.map((id, index) => ({
@@ -305,9 +313,15 @@ export function CaseWorkspace({
         flowAmount: 25000,
         relationshipType: "WIRE_TRANSFER",
         identityConfidence: 0.85,
+        currency: null,
+        timestamp: null,
       })),
       isTruncated: false,
       totalHops: edgeIds.length,
+      hopByNodeId: {},
+      timeMin: null,
+      timeMax: null,
+      unknownTimeEdgeCount: edgeIds.length,
     };
   }, [workbenchData?.trace, traceGraph, caseData?.traceEdgeIds]);
 

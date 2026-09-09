@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import math
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Literal, Protocol, Self, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from fincrime.cases.service import CaseService
 from fincrime.evidence.models import EvidenceItem, EvidencePolarity
 from fincrime.evidence.store import EvidenceStore
 
+TypologyTag = Literal[
+    "SEED_HUB", "SMURFING", "SHELL_CORP", "LAYERING", "CASHOUT", "CRYPTO_OTC", "BENIGN"
+]
 
 class CaseSummary(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
@@ -29,6 +34,10 @@ class TraceNode(BaseModel):
     risk_score: float | None = Field(default=None, ge=0.0, le=1.0)
     is_seed: bool = False
     is_context: bool = False
+    account_holder_name: str | None = Field(default=None, min_length=1, max_length=200)
+    bank_short_name: str | None = Field(default=None, min_length=1, max_length=80)
+    account_last4: str | None = Field(default=None, pattern=r"^[0-9]{4}$")
+    badge: TypologyTag | None = None
 
 
 class TraceEdge(BaseModel):
@@ -40,7 +49,38 @@ class TraceEdge(BaseModel):
     flow_amount: float = Field(ge=0.0)
     relationship_type: str = Field(min_length=1)
     identity_confidence: float = Field(ge=0.0, le=1.0)
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    timestamp: datetime | None = None
 
+    @field_validator("flow_amount", mode="after")
+    @classmethod
+    def _validate_flow_amount(cls, v: float) -> float:
+        if not math.isfinite(v) or v < 0:
+            raise ValueError(f"flow_amount must be a finite non-negative number, got {v}")
+        return v
+
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def _validate_timestamp(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        if not isinstance(v, datetime):
+            raise TypeError(f"timestamp must be a datetime object, got {type(v).__name__}")
+        if v.tzinfo is None or v.tzinfo.utcoffset(v) is None:
+            raise ValueError("timestamp must be timezone-aware")
+        return v.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def _validate_currency_and_vnd_amount(self) -> Self:
+        if self.currency == "VND":
+            if not self.flow_amount.is_integer():
+                raise ValueError(f"VND flow_amount must be an integer, got {self.flow_amount}")
+            int_amount = int(self.flow_amount)
+            if not (0 <= int_amount <= 9007199254740991):
+                raise ValueError(
+                    f"VND flow_amount must be in [0, 9007199254740991], got {int_amount}"
+                )
+        return self
 
 class TraceGraphResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
@@ -54,6 +94,82 @@ class TraceGraphResult(BaseModel):
 class ReferentialIntegrityError(Exception):
     pass
 
+@runtime_checkable
+class GraphRepository(Protocol):
+    def add_node(self, node: TraceNode) -> None: ...
+    def add_edge(self, edge: TraceEdge) -> None: ...
+    def get_node(self, node_id: str) -> TraceNode: ...
+    def get_edges(self, edge_ids: tuple[str, ...]) -> tuple[TraceEdge, ...]: ...
+    def get_subgraph_by_edge_ids(
+        self,
+        edge_ids: tuple[str, ...],
+        seed_entity: str,
+        max_hops: int = 4,
+        max_edges: int = 100,
+    ) -> TraceGraphResult: ...
+
+
+def bounded_trace(
+    nodes: dict[str, TraceNode],
+    edges: tuple[TraceEdge, ...],
+    seed_entity: str,
+    max_hops: int = 4,
+    max_edges: int = 100,
+) -> TraceGraphResult:
+    if not (1 <= max_hops <= 4):
+        raise ValueError(f"max_hops must be in 1..4, got {max_hops}")
+    if not (1 <= max_edges <= 100):
+        raise ValueError(f"max_edges must be in 1..100, got {max_edges}")
+
+    if seed_entity not in nodes:
+        raise ReferentialIntegrityError(
+            f"Seed entity not found in graph nodes: {seed_entity}"
+        )
+
+    for edge in edges:
+        if edge.source not in nodes or edge.target not in nodes:
+            raise ReferentialIntegrityError(f"Edge {edge.edge_id} references missing endpoint node")
+
+    traversed_edges: list[TraceEdge] = []
+    visited_nodes: set[str] = {seed_entity}
+    current_frontier: set[str] = {seed_entity}
+    actual_hops = 0
+
+    edge_pool = list(edges)
+    for hop in range(1, max_hops + 1):
+        next_frontier: set[str] = set()
+        new_edges_in_hop: list[TraceEdge] = []
+        for e in list(edge_pool):
+            if e.source in current_frontier or e.target in current_frontier:
+                new_edges_in_hop.append(e)
+                next_frontier.add(e.source)
+                next_frontier.add(e.target)
+                edge_pool.remove(e)
+        if not new_edges_in_hop:
+            break
+        traversed_edges.extend(new_edges_in_hop)
+        current_frontier = next_frontier
+        visited_nodes.update(next_frontier)
+        actual_hops = hop
+        if len(traversed_edges) >= max_edges:
+            break
+
+    result_edges = traversed_edges[:max_edges]
+    is_truncated = len(edges) > len(result_edges)
+
+    needed_node_ids = {seed_entity}
+    for edge in result_edges:
+        needed_node_ids.add(edge.source)
+        needed_node_ids.add(edge.target)
+
+    result_nodes = [nodes[nid] for nid in needed_node_ids]
+
+    return TraceGraphResult(
+        nodes=tuple(sorted(result_nodes, key=lambda n: n.node_id)),
+        edges=tuple(sorted(result_edges, key=lambda e: e.edge_id)),
+        is_truncated=is_truncated,
+        total_hops=actual_hops,
+    )
 
 class InMemoryGraphRepository:
     def __init__(
@@ -73,6 +189,19 @@ class InMemoryGraphRepository:
         with self._lock:
             self._edges[edge.edge_id] = edge
 
+    def get_node(self, node_id: str) -> TraceNode:
+        with self._lock:
+            if node_id not in self._nodes:
+                raise ReferentialIntegrityError(f"Node not found: {node_id}")
+            return self._nodes[node_id]
+
+    def get_edges(self, edge_ids: tuple[str, ...]) -> tuple[TraceEdge, ...]:
+        with self._lock:
+            missing = [eid for eid in edge_ids if eid not in self._edges]
+            if missing:
+                raise ReferentialIntegrityError(f"Requested edges not found: {missing}")
+            return tuple(self._edges[eid] for eid in edge_ids)
+
     def get_subgraph_by_edge_ids(
         self,
         edge_ids: tuple[str, ...],
@@ -86,7 +215,6 @@ class InMemoryGraphRepository:
             raise ValueError(f"max_edges must be in 1..100, got {max_edges}")
 
         with self._lock:
-            # 1. Referential integrity check
             if seed_entity not in self._nodes:
                 raise ReferentialIntegrityError(
                     f"Seed entity not found in graph nodes: {seed_entity}"
@@ -96,51 +224,14 @@ class InMemoryGraphRepository:
             for eid in edge_ids:
                 if eid not in self._edges:
                     raise ReferentialIntegrityError(f"Requested edge not found: {eid}")
-                edge = self._edges[eid]
-                if edge.source not in self._nodes or edge.target not in self._nodes:
-                    raise ReferentialIntegrityError(f"Edge {eid} references missing endpoint node")
-                all_requested_edges.append(edge)
+                all_requested_edges.append(self._edges[eid])
 
-            # 2. Strict BFS traversal rooted at seed_entity
-            traversed_edges: list[TraceEdge] = []
-            visited_nodes: set[str] = {seed_entity}
-            current_frontier: set[str] = {seed_entity}
-            actual_hops = 0
-
-            edge_pool = list(all_requested_edges)
-            for hop in range(1, max_hops + 1):
-                next_frontier: set[str] = set()
-                new_edges_in_hop: list[TraceEdge] = []
-                for e in list(edge_pool):
-                    if e.source in current_frontier or e.target in current_frontier:
-                        new_edges_in_hop.append(e)
-                        next_frontier.add(e.source)
-                        next_frontier.add(e.target)
-                        edge_pool.remove(e)
-                if not new_edges_in_hop:
-                    break
-                traversed_edges.extend(new_edges_in_hop)
-                current_frontier = next_frontier
-                visited_nodes.update(next_frontier)
-                actual_hops = hop
-                if len(traversed_edges) >= max_edges:
-                    break
-
-            result_edges = traversed_edges[:max_edges]
-            is_truncated = len(all_requested_edges) > len(result_edges)
-
-            needed_node_ids = {seed_entity}
-            for edge in result_edges:
-                needed_node_ids.add(edge.source)
-                needed_node_ids.add(edge.target)
-
-            result_nodes = [self._nodes[nid] for nid in needed_node_ids]
-
-            return TraceGraphResult(
-                nodes=tuple(sorted(result_nodes, key=lambda n: n.node_id)),
-                edges=tuple(sorted(result_edges, key=lambda e: e.edge_id)),
-                is_truncated=is_truncated,
-                total_hops=actual_hops,
+            return bounded_trace(
+                nodes=self._nodes,
+                edges=tuple(all_requested_edges),
+                seed_entity=seed_entity,
+                max_hops=max_hops,
+                max_edges=max_edges,
             )
 
 
@@ -189,7 +280,7 @@ def get_mitigating_evidence(
 def get_fund_trace(
     case_id: str,
     case_service: CaseService,
-    graph_repo: InMemoryGraphRepository,
+    graph_repo: GraphRepository,
     max_hops: int = 4,
     max_edges: int = 100,
 ) -> TraceGraphResult:

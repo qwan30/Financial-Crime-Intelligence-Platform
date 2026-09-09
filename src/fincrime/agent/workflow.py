@@ -12,7 +12,7 @@ from fincrime.agent.deepseek import (
 )
 from fincrime.agent.settings import BudgetExceededError, DeepSeekSettings
 from fincrime.agent.tools import (
-    InMemoryGraphRepository,
+    GraphRepository,
     ReferentialIntegrityError,
     get_fund_trace,
     get_mitigating_evidence,
@@ -81,7 +81,7 @@ def investigate_case_workflow(
     case_id: str,
     case_service: CaseService,
     evidence_store: EvidenceStore,
-    graph_repo: InMemoryGraphRepository,
+    graph_repo: GraphRepository,
     settings: DeepSeekSettings | None = None,
     deepseek_provider: GuardedDeepSeekProvider | None = None,
 ) -> InvestigationHypothesis:
@@ -201,7 +201,7 @@ class InvestigatorWorkflow:
         self,
         case_service: CaseService,
         evidence_store: EvidenceStore,
-        graph_repo: InMemoryGraphRepository,
+        graph_repo: GraphRepository,
         provider: GuardedDeepSeekProvider | None = None,
         settings: DeepSeekSettings | None = None,
         deepseek_provider: GuardedDeepSeekProvider | None = None,

@@ -1,0 +1,273 @@
+{
+  "caseId": "canvas_vn_01",
+  "seedEntity": "hub",
+  "createdAt": "2026-09-08T08:00:00+07:00",
+  "nodes": [
+    {
+      "nodeId": "hub",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.88,
+      "isSeed": true,
+      "isContext": false,
+      "accountHolderName": "Nguyễn Văn A",
+      "bankShortName": "Vietcombank",
+      "accountLast4": "2891",
+      "badge": "SEED_HUB"
+    },
+    {
+      "nodeId": "mule1",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.76,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Trần Thị Bình",
+      "bankShortName": "Sacombank",
+      "accountLast4": "9020",
+      "badge": "SMURFING"
+    },
+    {
+      "nodeId": "mule2",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.72,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Lê Văn Cường",
+      "bankShortName": "BIDV",
+      "accountLast4": "4812",
+      "badge": "SMURFING"
+    },
+    {
+      "nodeId": "mule3",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.67,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Phạm Thị Dung",
+      "bankShortName": "VietinBank",
+      "accountLast4": "3510",
+      "badge": "SMURFING"
+    },
+    {
+      "nodeId": "mule4",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.64,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Hoàng Văn Em",
+      "bankShortName": "Techcombank",
+      "accountLast4": "1164",
+      "badge": "SMURFING"
+    },
+    {
+      "nodeId": "mule5",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.62,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Vũ Thị Phương",
+      "bankShortName": "ACB",
+      "accountLast4": "7701",
+      "badge": "SMURFING"
+    },
+    {
+      "nodeId": "evn",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.08,
+      "isSeed": false,
+      "isContext": true,
+      "accountHolderName": "Tổng công ty Điện lực Thành phố Hồ Chí Minh",
+      "bankShortName": "Vietcombank",
+      "accountLast4": "1100",
+      "badge": "BENIGN"
+    },
+    {
+      "nodeId": "shell",
+      "entityType": "COMPANY",
+      "riskScore": 0.92,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Công ty TNHH Thương mại và Dịch vụ Nam Phát",
+      "bankShortName": "Techcombank",
+      "accountLast4": "0012",
+      "badge": "SHELL_CORP"
+    },
+    {
+      "nodeId": "atm",
+      "entityType": "ATM",
+      "riskScore": 0.86,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Cây ATM Vietcombank Quận 1",
+      "bankShortName": "Vietcombank",
+      "accountLast4": null,
+      "badge": "CASHOUT"
+    },
+    {
+      "nodeId": "crypto",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.89,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Đại lý giao dịch P2P tài sản mã hóa",
+      "bankShortName": null,
+      "accountLast4": null,
+      "badge": "CRYPTO_OTC"
+    },
+    {
+      "nodeId": "exit3",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.55,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Tài khoản trung chuyển cấp ba",
+      "bankShortName": "BIDV",
+      "accountLast4": "9090",
+      "badge": "LAYERING"
+    },
+    {
+      "nodeId": "exit4",
+      "entityType": "ACCOUNT",
+      "riskScore": 0.51,
+      "isSeed": false,
+      "isContext": false,
+      "accountHolderName": "Tài khoản ngoài phạm vi ba hop",
+      "bankShortName": "ACB",
+      "accountLast4": "9009",
+      "badge": "LAYERING"
+    }
+  ],
+  "edges": [
+    {
+      "edgeId": "TXN-2026-8800",
+      "source": "hub",
+      "target": "evn",
+      "flowAmount": 1500000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T08:15:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8801",
+      "source": "mule1",
+      "target": "hub",
+      "flowAmount": 10000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T08:30:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8802",
+      "source": "mule2",
+      "target": "hub",
+      "flowAmount": 25000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T08:40:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8803",
+      "source": "mule3",
+      "target": "hub",
+      "flowAmount": 45000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T08:55:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8808",
+      "source": "mule4",
+      "target": "hub",
+      "flowAmount": 20000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:00:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8809",
+      "source": "mule5",
+      "target": "hub",
+      "flowAmount": 30000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:05:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8804",
+      "source": "hub",
+      "target": "shell",
+      "flowAmount": 140000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:12:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8805",
+      "source": "shell",
+      "target": "atm",
+      "flowAmount": 60000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:35:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8806",
+      "source": "shell",
+      "target": "crypto",
+      "flowAmount": 80000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:50:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    },
+    {
+      "edgeId": "TXN-2026-8807",
+      "source": "atm",
+      "target": "exit3",
+      "flowAmount": 10000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T09:55:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.65
+    },
+    {
+      "edgeId": "TXN-2026-8810",
+      "source": "exit3",
+      "target": "exit4",
+      "flowAmount": 10000000,
+      "currency": "VND",
+      "timestamp": "2026-09-08T10:00:00+07:00",
+      "relationshipType": "NAPAS_247",
+      "identityConfidence": 0.98
+    }
+  ],
+  "evidence": [
+    {
+      "evidenceId": "ev:canvas:observed",
+      "category": "OBSERVED",
+      "sourceReference": "edge:TXN-2026-8804",
+      "polarity": "UNKNOWN",
+      "snapshotTime": "2026-09-08T09:12:00+07:00",
+      "generationMethodVersion": "forensic-canvas-fixture-v1",
+      "confidence": null,
+      "payloadSummary": "Chuyển 140000000 VND từ hub đến shell lúc 09:12 +07:00"
+    },
+    {
+      "evidenceId": "ev:canvas:mitigating",
+      "category": "RULE",
+      "sourceReference": "edge:TXN-2026-8800",
+      "polarity": "MITIGATING",
+      "snapshotTime": "2026-09-08T08:15:00+07:00",
+      "generationMethodVersion": "forensic-canvas-fixture-v1",
+      "confidence": null,
+      "payloadSummary": "Thanh toán tiền điện EVN có chứng từ đối chiếu"
+    }
+  ]
+}

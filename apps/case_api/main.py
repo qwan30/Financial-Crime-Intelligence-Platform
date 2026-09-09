@@ -8,8 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fincrime.agent.settings import DeepSeekSettings
 from fincrime.agent.tools import (
+    GraphRepository,
     InMemoryGraphRepository,
     ReferentialIntegrityError,
+    TypologyTag,
     get_fund_trace,
 )
 from fincrime.agent.workflow import (
@@ -89,6 +91,10 @@ class TraceNodeResponse(BaseDTO):
     risk_score: float | None = None
     is_seed: bool = False
     is_context: bool = False
+    account_holder_name: str | None = None
+    bank_short_name: str | None = None
+    account_last4: str | None = None
+    badge: TypologyTag | None = None
 
 
 class TraceEdgeResponse(BaseDTO):
@@ -98,6 +104,8 @@ class TraceEdgeResponse(BaseDTO):
     flow_amount: float
     relationship_type: str
     identity_confidence: float
+    currency: str | None = None
+    timestamp: str | None = None
 
 
 class TraceGraphResponse(BaseDTO):
@@ -105,6 +113,10 @@ class TraceGraphResponse(BaseDTO):
     edges: list[TraceEdgeResponse]
     is_truncated: bool
     total_hops: int
+    hop_by_node_id: dict[str, int] = Field(default_factory=dict)
+    time_min: str | None = None
+    time_max: str | None = None
+    unknown_time_edge_count: int = 0
 
 
 class MaterialClaimResponse(BaseDTO):
@@ -168,7 +180,7 @@ def get_evidence_store(request: Request) -> EvidenceStore:
     return request.app.state.evidence_store  # type: ignore[no-any-return]
 
 
-def get_graph_repo(request: Request) -> InMemoryGraphRepository:
+def get_graph_repo(request: Request) -> GraphRepository:
     return request.app.state.graph_repo  # type: ignore[no-any-return]
 
 
@@ -178,14 +190,14 @@ def get_settings(request: Request) -> DeepSeekSettings:
 
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
 EvidenceStoreDep = Annotated[EvidenceStore, Depends(get_evidence_store)]
-GraphRepoDep = Annotated[InMemoryGraphRepository, Depends(get_graph_repo)]
+GraphRepoDep = Annotated[GraphRepository, Depends(get_graph_repo)]
 SettingsDep = Annotated[DeepSeekSettings, Depends(get_settings)]
 
 
 def create_app(
     case_service: CaseService | None = None,
     evidence_store: EvidenceStore | None = None,
-    graph_repo: InMemoryGraphRepository | None = None,
+    graph_repo: GraphRepository | None = None,
     settings: DeepSeekSettings | None = None,
     deepseek_provider: Any = None,
 ) -> FastAPI:
@@ -426,6 +438,10 @@ def create_app(
                             risk_score=n.risk_score,
                             is_seed=n.is_seed,
                             is_context=n.is_context,
+                            account_holder_name=n.account_holder_name,
+                            bank_short_name=n.bank_short_name,
+                            account_last4=n.account_last4,
+                            badge=n.badge,
                         )
                         for n in trace_res.nodes
                     ],
@@ -437,8 +453,9 @@ def create_app(
                             flow_amount=e.flow_amount,
                             relationship_type=e.relationship_type,
                             identity_confidence=e.identity_confidence,
+                            currency=e.currency,
+                            timestamp=e.timestamp.isoformat() if e.timestamp else None,
                         )
-                        for e in trace_res.edges
                     ],
                     is_truncated=trace_res.is_truncated,
                     total_hops=trace_res.total_hops,
