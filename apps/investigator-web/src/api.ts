@@ -114,13 +114,52 @@ export type HypothesisResponse = {
   modelVersion?: string | null;
 };
 
+export type PinnedEvidenceResponse = {
+  edgeId: string;
+  evidenceId: string;
+  analystId: string;
+  typologyTag: TypologyTag | null;
+  updatedAt: string;
+  transaction: TraceEdgeResponse;
+};
+
+export type PinEvidenceRequest = {
+  edge_id: string;
+  analyst_id: string;
+  is_pinned: boolean;
+  typology_tag: TypologyTag | null;
+};
+
+export type PinEvidenceResult = {
+  new_snapshot_hash: string;
+  case: CaseResponse;
+  evidence: EvidenceResponse[];
+  pins: PinnedEvidenceResponse[];
+};
+
+export type PinEvidenceEnvelope =
+  | SuccessEnvelope<PinEvidenceResult>
+  | ErrorEnvelope;
+
+export type ExpandGraphRequest = {
+  nodeId: string;
+  knownEdgeIds: string[];
+  snapshotHash: string;
+};
+
+export type TraceEnvelope =
+  | SuccessEnvelope<TraceGraphResponse>
+  | ErrorEnvelope;
+
 export type WorkbenchData = {
   case: CaseResponse;
   evidence: EvidenceResponse[];
   trace: TraceGraphResponse;
   hypothesis: HypothesisResponse;
+  pins: PinnedEvidenceResponse[];
+  pinningAvailable: boolean;
+  hypothesisSnapshotHash: string | null;
 };
-
 export type Disposition =
   | "CONFIRMED_SUSPICIOUS"
   | "FALSE_POSITIVE"
@@ -148,23 +187,85 @@ export type FeedbackEnvelope =
 
 export async function fetchWorkbenchData(
   caseId: string,
-  baseUrl = ""
+  baseUrl = "",
+  signal?: AbortSignal
 ): Promise<WorkbenchEnvelope> {
   try {
     const res = await fetch(
-      `${baseUrl}/cases/${encodeURIComponent(caseId)}/workbench`
+      `${baseUrl}/cases/${encodeURIComponent(caseId)}/workbench`,
+      { signal }
     );
     const json = await res.json();
     return json as WorkbenchEnvelope;
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Network error fetching workbench data";
+    const msg = err instanceof Error ? err.message : "Unknown network error";
     return {
       success: false,
       data: null,
       error: {
         code: "FETCH_ERROR",
-        message,
+        message: msg,
+      },
+    };
+  }
+}
+
+export async function pinEvidence(
+  caseId: string,
+  request: PinEvidenceRequest,
+  snapshotHash: string,
+  signal?: AbortSignal
+): Promise<PinEvidenceEnvelope> {
+  const cleanHash = snapshotHash.replace(/^"|"$/g, "");
+  try {
+    const res = await fetch(`/cases/${encodeURIComponent(caseId)}/evidence/pin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${cleanHash}"`,
+      },
+      body: JSON.stringify(request),
+      signal,
+    });
+    const json = await res.json();
+    return json as PinEvidenceEnvelope;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown network error";
+    return {
+      success: false,
+      data: null,
+      error: {
+        code: "PIN_EVIDENCE_ERROR",
+        message: msg,
+      },
+    };
+  }
+}
+
+export async function expandGraph(
+  caseId: string,
+  request: ExpandGraphRequest,
+  signal?: AbortSignal
+): Promise<TraceEnvelope> {
+  try {
+    const res = await fetch(`/cases/${encodeURIComponent(caseId)}/graph/expand`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+      signal,
+    });
+    const json = await res.json();
+    return json as TraceEnvelope;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown network error";
+    return {
+      success: false,
+      data: null,
+      error: {
+        code: "EXPAND_GRAPH_ERROR",
+        message: msg,
       },
     };
   }

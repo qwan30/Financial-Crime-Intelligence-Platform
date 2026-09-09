@@ -83,6 +83,9 @@ describe("api client", () => {
           generatedAt: "2026-09-02T10:05:00Z",
           modelVersion: "deepseek-r1",
         },
+        pins: [],
+        pinningAvailable: false,
+        hypothesisSnapshotHash: null,
       };
 
       globalThis.fetch = vi.fn().mockResolvedValue({

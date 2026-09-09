@@ -131,6 +131,9 @@ describe("CaseWorkspace", () => {
       generatedAt: "2026-09-02T08:15:00Z",
       modelVersion: "deepseek-r1-aml-v1",
     },
+    pins: [],
+    pinningAvailable: false,
+    hypothesisSnapshotHash: null,
   };
 
   it("shows evidence and provider-off state with minimal caseData", () => {

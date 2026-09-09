@@ -3,10 +3,10 @@ from datetime import UTC, datetime
 import os
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Header, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from fincrime.agent.settings import DeepSeekSettings
 from fincrime.agent.tools import (
@@ -135,12 +135,53 @@ class HypothesisResponse(BaseDTO):
     generated_at: str
     model_version: str | None = None
 
+class PinnedEvidenceResponse(BaseDTO):
+    edge_id: str
+    evidence_id: str
+    analyst_id: str
+    typology_tag: TypologyTag | None = None
+    updated_at: str
+    transaction: TraceEdgeResponse
+
+
+class PinEvidenceResult(BaseDTO):
+    new_snapshot_hash: str = Field(serialization_alias="new_snapshot_hash")
+    case: CaseResponse
+    evidence: list[EvidenceResponse]
+    pins: list[PinnedEvidenceResponse]
+
+
+class PinEvidenceRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    edge_id: str = Field(min_length=1)
+    analyst_id: str = Field(min_length=1)
+    is_pinned: bool = Field(strict=True)
+    typology_tag: TypologyTag | None = None
+
+    @field_validator("edge_id", "analyst_id")
+    @classmethod
+    def _validate_non_blank(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Field must be non-blank after trimming")
+        return stripped
+
+
+class ExpandGraphRequest(BaseDTO):
+    node_id: str
+    known_edge_ids: list[str]
+    snapshot_hash: str
+
 
 class WorkbenchData(BaseDTO):
     case: CaseResponse
     evidence: list[EvidenceResponse]
     trace: TraceGraphResponse
     hypothesis: HypothesisResponse
+    pins: list[PinnedEvidenceResponse] = Field(default_factory=list)
+    pinning_available: bool = False
+    hypothesis_snapshot_hash: str | None = None
 
 
 CaseEnvelope = Annotated[
@@ -148,6 +189,12 @@ CaseEnvelope = Annotated[
 ]
 WorkbenchEnvelope = Annotated[
     SuccessEnvelope[WorkbenchData] | ErrorEnvelope, Field(discriminator="success")
+]
+PinEvidenceEnvelope = Annotated[
+    SuccessEnvelope[PinEvidenceResult] | ErrorEnvelope, Field(discriminator="success")
+]
+TraceEnvelope = Annotated[
+    SuccessEnvelope[TraceGraphResponse] | ErrorEnvelope, Field(discriminator="success")
 ]
 FeedbackEnvelope = Annotated[
     SuccessEnvelope[dict[str, str]] | ErrorEnvelope, Field(discriminator="success")
@@ -429,16 +476,269 @@ def create_app(
                 },
             )
 
+    @application.post("/cases/{case_id}/evidence/pin", response_model=PinEvidenceEnvelope)
+    def pin_evidence(
+        case_id: str,
+        command: PinEvidenceRequest,
+        request: Request,
+        if_match: Annotated[str | None, Header()] = None,
+    ) -> Any:
+        if not if_match:
+            return JSONResponse(
+                status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "SNAPSHOT_REQUIRED", "message": "If-Match header is required"},
+                },
+            )
+        expected_hash = if_match.strip().strip('"')
+
+        if not getattr(request.app.state, "pinning_available", False) or getattr(request.app.state, "engine", None) is None:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "PERSISTENCE_UNAVAILABLE", "message": "PostgreSQL storage is not configured"},
+                },
+            )
+
+        from fincrime.cases.canvas import SnapshotConflict
+        from fincrime.cases.pinning import EdgeNotInCase, PinCommand, PinningService
+
+        pin_service = PinningService(request.app.state.engine)
+        cmd = PinCommand(
+            edge_id=command.edge_id,
+            analyst_id=command.analyst_id,
+            is_pinned=command.is_pinned,
+            typology_tag=command.typology_tag,
+        )
+        try:
+            pinned_case = pin_service.set_pin(case_id, cmd, expected_hash)
+        except CaseNotFound:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "CASE_NOT_FOUND", "message": f"Case not found: {case_id}"},
+                },
+            )
+        except EdgeNotInCase:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "EDGE_NOT_IN_CASE", "message": f"Edge not in case: {command.edge_id}"},
+                },
+            )
+        except SnapshotConflict as exc:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "SNAPSHOT_CONFLICT", "message": str(exc)},
+                },
+            )
+        except ReferentialIntegrityError as exc:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "TRACE_INTEGRITY_ERROR", "message": str(exc)},
+                },
+            )
+
+        cs = pinned_case.case
+        case_resp = CaseResponse(
+            case_id=cs.case_id,
+            seed_entity=cs.seed_entity,
+            evidence_ids=list(cs.evidence_ids),
+            trace_edge_ids=list(cs.trace_edge_ids),
+            created_at=cs.created_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            snapshot_hash=cs.snapshot_hash,
+        )
+        ev_list = [
+            EvidenceResponse(
+                evidence_id=it.evidence_id,
+                category=it.category.value,
+                source_reference=it.source_reference,
+                polarity=it.polarity.value,
+                snapshot_time=it.snapshot_time.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                generation_method_version=it.generation_method_version,
+                payload_summary=it.payload_summary,
+                integrity_hash=it.integrity_hash,
+                confidence=it.confidence,
+            )
+            for it in pinned_case.evidence
+        ]
+        pins_list = [
+            PinnedEvidenceResponse(
+                edge_id=p.edge_id,
+                evidence_id=p.evidence_id,
+                analyst_id=p.analyst_id,
+                typology_tag=p.typology_tag,
+                updated_at=p.updated_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                transaction=TraceEdgeResponse(
+                    edge_id=p.transaction.edge_id,
+                    source=p.transaction.source,
+                    target=p.transaction.target,
+                    flow_amount=p.transaction.flow_amount,
+                    relationship_type=p.transaction.relationship_type,
+                    identity_confidence=p.transaction.identity_confidence,
+                    currency=p.transaction.currency,
+                    timestamp=p.transaction.timestamp.isoformat() if p.transaction.timestamp else None,
+                ),
+            )
+            for p in pinned_case.pins
+        ]
+
+        return SuccessEnvelope[PinEvidenceResult](
+            data=PinEvidenceResult(
+                new_snapshot_hash=cs.snapshot_hash,
+                case=case_resp,
+                evidence=ev_list,
+                pins=pins_list,
+            )
+        )
+
+    @application.post("/cases/{case_id}/graph/expand", response_model=TraceEnvelope)
+    def expand_graph(
+        case_id: str,
+        req: ExpandGraphRequest,
+        service: CaseServiceDep,
+        graph_repo_dep: GraphRepoDep,
+    ) -> Any:
+        from fincrime.cases.canvas import CanvasService, InvalidExpansion, SnapshotConflict
+
+        canvas_svc = CanvasService(cases=service, graph=graph_repo_dep)
+        try:
+            trace_res = canvas_svc.expand(
+                case_id=case_id,
+                node_id=req.node_id,
+                known_edge_ids=tuple(req.known_edge_ids),
+                snapshot_hash=req.snapshot_hash,
+            )
+        except CaseNotFound:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "CASE_NOT_FOUND", "message": f"Case not found: {case_id}"},
+                },
+            )
+        except SnapshotConflict as exc:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "SNAPSHOT_CONFLICT", "message": str(exc)},
+                },
+            )
+        except InvalidExpansion as exc:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "INVALID_EXPANSION", "message": str(exc)},
+                },
+            )
+        except ReferentialIntegrityError as exc:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "TRACE_INTEGRITY_ERROR", "message": str(exc)},
+                },
+            )
+
+        trace_resp = TraceGraphResponse(
+            nodes=[
+                TraceNodeResponse(
+                    node_id=n.node_id,
+                    entity_type=n.entity_type,
+                    risk_score=n.risk_score,
+                    is_seed=n.is_seed,
+                    is_context=n.is_context,
+                    account_holder_name=n.account_holder_name,
+                    bank_short_name=n.bank_short_name,
+                    account_last4=n.account_last4,
+                    badge=n.badge,
+                )
+                for n in trace_res.graph.nodes
+            ],
+            edges=[
+                TraceEdgeResponse(
+                    edge_id=e.edge_id,
+                    source=e.source,
+                    target=e.target,
+                    flow_amount=e.flow_amount,
+                    relationship_type=e.relationship_type,
+                    identity_confidence=e.identity_confidence,
+                    currency=e.currency,
+                    timestamp=e.timestamp.isoformat() if e.timestamp else None,
+                )
+                for e in trace_res.graph.edges
+            ],
+            is_truncated=trace_res.graph.is_truncated,
+            total_hops=trace_res.graph.total_hops,
+            hop_by_node_id=trace_res.hop_by_node_id,
+            time_min=trace_res.time_min.isoformat() if trace_res.time_min else None,
+            time_max=trace_res.time_max.isoformat() if trace_res.time_max else None,
+            unknown_time_edge_count=trace_res.unknown_time_edge_count,
+        )
+        return SuccessEnvelope[TraceGraphResponse](data=trace_resp)
+
     @application.get("/cases/{case_id}/workbench", response_model=WorkbenchEnvelope)
     def get_workbench(
         case_id: str,
+        request: Request,
         service: CaseServiceDep,
         ev_store_dep: EvidenceStoreDep,
         graph_repo_dep: GraphRepoDep,
-        settings_dep: SettingsDep,
     ) -> Any:
         try:
-            cs = service.get(case_id)
+            pins_resp: list[PinnedEvidenceResponse] = []
+            pinning_available = getattr(request.app.state, "pinning_available", False)
+            if pinning_available and getattr(request.app.state, "engine", None) is not None:
+                from fincrime.cases.pinning import PinningService
+
+                pin_service = PinningService(request.app.state.engine)
+                pinned_case = pin_service.read(case_id)
+                cs = pinned_case.case
+                ev_items = list(pinned_case.evidence)
+                for p in pinned_case.pins:
+                    pins_resp.append(
+                        PinnedEvidenceResponse(
+                            edge_id=p.edge_id,
+                            evidence_id=p.evidence_id,
+                            analyst_id=p.analyst_id,
+                            typology_tag=p.typology_tag,
+                            updated_at=p.updated_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            transaction=TraceEdgeResponse(
+                                edge_id=p.transaction.edge_id,
+                                source=p.transaction.source,
+                                target=p.transaction.target,
+                                flow_amount=p.transaction.flow_amount,
+                                relationship_type=p.transaction.relationship_type,
+                                identity_confidence=p.transaction.identity_confidence,
+                                currency=p.transaction.currency,
+                                timestamp=p.transaction.timestamp.isoformat() if p.transaction.timestamp else None,
+                            ),
+                        )
+                    )
+            else:
+                cs = service.get(case_id)
+                ev_items = [ev_store_dep.get(eid) for eid in cs.evidence_ids]
+
             case_resp = CaseResponse(
                 case_id=cs.case_id,
                 seed_entity=cs.seed_entity,
@@ -448,94 +748,71 @@ def create_app(
                 snapshot_hash=cs.snapshot_hash,
             )
 
-            # Resolve evidence items
-            ev_list: list[EvidenceResponse] = []
-            for eid in cs.evidence_ids:
-                item = ev_store_dep.get(eid)
-                ev_list.append(
-                    EvidenceResponse(
-                        evidence_id=item.evidence_id,
-                        category=item.category.value,
-                        source_reference=item.source_reference,
-                        polarity=item.polarity.value,
-                        snapshot_time=item.snapshot_time.astimezone(UTC).strftime(
-                            "%Y-%m-%dT%H:%M:%SZ"
-                        ),
-                        generation_method_version=item.generation_method_version,
-                        payload_summary=item.payload_summary,
-                        integrity_hash=item.integrity_hash,
-                        confidence=item.confidence,
-                    )
+            ev_list: list[EvidenceResponse] = [
+                EvidenceResponse(
+                    evidence_id=item.evidence_id,
+                    category=item.category.value,
+                    source_reference=item.source_reference,
+                    polarity=item.polarity.value,
+                    snapshot_time=item.snapshot_time.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    generation_method_version=item.generation_method_version,
+                    payload_summary=item.payload_summary,
+                    integrity_hash=item.integrity_hash,
+                    confidence=item.confidence,
                 )
+                for item in ev_items
+            ]
 
-            # Resolve trace gracefully
-            try:
-                trace_res = get_fund_trace(
-                    case_id=case_id,
-                    case_service=service,
-                    graph_repo=graph_repo_dep,
-                )
-                trace_resp = TraceGraphResponse(
-                    nodes=[
-                        TraceNodeResponse(
-                            node_id=n.node_id,
-                            entity_type=n.entity_type,
-                            risk_score=n.risk_score,
-                            is_seed=n.is_seed,
-                            is_context=n.is_context,
-                            account_holder_name=n.account_holder_name,
-                            bank_short_name=n.bank_short_name,
-                            account_last4=n.account_last4,
-                            badge=n.badge,
-                        )
-                        for n in trace_res.nodes
-                    ],
-                    edges=[
-                        TraceEdgeResponse(
-                            edge_id=e.edge_id,
-                            source=e.source,
-                            target=e.target,
-                            flow_amount=e.flow_amount,
-                            relationship_type=e.relationship_type,
-                            identity_confidence=e.identity_confidence,
-                            currency=e.currency,
-                            timestamp=e.timestamp.isoformat() if e.timestamp else None,
-                        )
-                    ],
-                    is_truncated=trace_res.is_truncated,
-                    total_hops=trace_res.total_hops,
-                )
-            except (ReferentialIntegrityError, ValueError):
-                trace_resp = TraceGraphResponse(
-                    nodes=[],
-                    edges=[],
-                    is_truncated=False,
-                    total_hops=0,
-                )
+            from fincrime.cases.canvas import CanvasService
 
-            # Generate hypothesis via workflow
-            hyp = investigate_case_workflow(
-                case_id=case_id,
-                case_service=service,
-                evidence_store=ev_store_dep,
-                graph_repo=graph_repo_dep,
-                settings=settings_dep,
-                deepseek_provider=application.state.deepseek_provider,
-            )
-            hyp_resp = HypothesisResponse(
-                hypothesis_id=hyp.hypothesis_id,
-                case_id=hyp.case_id,
-                status=hyp.status.value,
-                summary=hyp.summary,
-                claims=[
-                    MaterialClaimResponse(
-                        claim_text=c.claim_text,
-                        cited_evidence_ids=list(c.cited_evidence_ids),
+            canvas_svc = CanvasService(cases=service, graph=graph_repo_dep)
+            trace_res = canvas_svc.initial(case_id, case_snapshot=cs)
+            trace_resp = TraceGraphResponse(
+                nodes=[
+                    TraceNodeResponse(
+                        node_id=n.node_id,
+                        entity_type=n.entity_type,
+                        risk_score=n.risk_score,
+                        is_seed=n.is_seed,
+                        is_context=n.is_context,
+                        account_holder_name=n.account_holder_name,
+                        bank_short_name=n.bank_short_name,
+                        account_last4=n.account_last4,
+                        badge=n.badge,
                     )
-                    for c in hyp.claims
+                    for n in trace_res.graph.nodes
                 ],
-                generated_at=hyp.generated_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                model_version=hyp.model_version,
+                edges=[
+                    TraceEdgeResponse(
+                        edge_id=e.edge_id,
+                        source=e.source,
+                        target=e.target,
+                        flow_amount=e.flow_amount,
+                        relationship_type=e.relationship_type,
+                        identity_confidence=e.identity_confidence,
+                        currency=e.currency,
+                        timestamp=e.timestamp.isoformat() if e.timestamp else None,
+                    )
+                    for e in trace_res.graph.edges
+                ],
+                is_truncated=trace_res.graph.is_truncated,
+                total_hops=trace_res.graph.total_hops,
+                hop_by_node_id=trace_res.hop_by_node_id,
+                time_min=trace_res.time_min.isoformat() if trace_res.time_min else None,
+                time_max=trace_res.time_max.isoformat() if trace_res.time_max else None,
+                unknown_time_edge_count=trace_res.unknown_time_edge_count,
+            )
+
+            ai_status = "INSUFFICIENT_EVIDENCE" if not cs.evidence_ids else "AI_UNAVAILABLE"
+            ai_summary = "AI provider disabled (LLM_OFF mode)"
+            hyp_resp = HypothesisResponse(
+                hypothesis_id=f"hyp-avail-{cs.case_id}",
+                case_id=cs.case_id,
+                status=ai_status,
+                summary=ai_summary,
+                claims=[],
+                generated_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                model_version=None,
             )
 
             return SuccessEnvelope[WorkbenchData](
@@ -544,6 +821,9 @@ def create_app(
                     evidence=ev_list,
                     trace=trace_resp,
                     hypothesis=hyp_resp,
+                    pins=pins_resp,
+                    pinning_available=pinning_available,
+                    hypothesis_snapshot_hash=None,
                 )
             )
         except CaseNotFound:
@@ -553,6 +833,15 @@ def create_app(
                     "success": False,
                     "data": None,
                     "error": {"code": "CASE_NOT_FOUND", "message": f"Case not found: {case_id}"},
+                },
+            )
+        except ReferentialIntegrityError as exc:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {"code": "TRACE_INTEGRITY_ERROR", "message": str(exc)},
                 },
             )
 
