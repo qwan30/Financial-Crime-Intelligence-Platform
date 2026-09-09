@@ -40,7 +40,7 @@ jobs:
 
       - name: Review internal pull request
         if: steps.gemini.outputs.configured == 'true'
-        uses: the-pr-agent/pr-agent@46d7ee02b77bc1f323c327e32be4ee70e4cd306a
+        uses: the-pr-agent/pr-agent@17651f75b2b29268eb32d5d9a9227b8f3a7c1131
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
