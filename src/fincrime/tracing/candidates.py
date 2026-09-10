@@ -11,6 +11,7 @@ from fincrime.tracing.models import (
     EXCLUSION_REASONS,
     REASON_CODE_ORDER,
     STOP_REASONS_ORDER,
+    AccountSeed,
     ExcludedTransition,
     ExclusionReason,
     ReasonCode,
@@ -23,6 +24,7 @@ from fincrime.tracing.models import (
     TraceRequest,
     TraceResult,
     TraceStep,
+    TransactionSeed,
     datetime_to_descending_usec,
     duration_microseconds,
 )
@@ -177,7 +179,7 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
     anchor_event: TransactionEvent | None = None
     anchor_id: str | None = None
 
-    if seed_kind == "account":
+    if isinstance(request.seed, AccountSeed):
         account_id = request.seed.account_id
         if not snapshot.has_account(account_id):
             return TraceResult(
@@ -194,6 +196,7 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
                 stop_reasons=(),
             )
     else:
+        assert isinstance(request.seed, TransactionSeed)
         anchor_id = request.seed.edge_id
         if not snapshot.has_edge(anchor_id):
             return TraceResult(
@@ -234,7 +237,7 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
     # State tracking
     admitted_edge_ids: set[str] = set()
     admitted_paths: list[TracePath] = []
-    seen_path_signatures: set[tuple[str, tuple[str, ...]]] = set()
+    seen_path_signatures: set[tuple[Literal["backward", "forward"], tuple[str, ...]]] = set()
     covered_root_branches: set[RootBranch] = set()
 
     exclusion_counts: dict[str, int] = {r: 0 for r in EXCLUSION_REASONS}
@@ -279,7 +282,7 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
     if request.direction in ("forward", "both"):
         directions_to_run.append("forward")
 
-    if seed_kind == "account":
+    if isinstance(request.seed, AccountSeed):
         acc_id = request.seed.account_id
         # For account seed, create length-0 states per direction
         for d in directions_to_run:
@@ -310,7 +313,10 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
                 max_gap_usec=request.max_gap_microseconds,
             )
             term: TerminalReason | None = "CYCLE_CLOSED" if is_self_loop else None
-            path_sig = (d, (anchor_event.edge_id,))
+            path_sig: tuple[Literal["backward", "forward"], tuple[str, ...]] = (
+                d,
+                (anchor_event.edge_id,),
+            )
             seen_path_signatures.add(path_sig)
 
             path_id = compute_sha256_hex({"direction": d, "edge_ids": [anchor_event.edge_id]})
@@ -613,11 +619,12 @@ def generate_candidates(snapshot: TraceSnapshot, request: TraceRequest) -> Trace
 
     # Lexically sort edges and their corresponding transactions
     sorted_edge_ids = tuple(sorted(admitted_edge_ids))
-    sorted_transactions = tuple(
-        snapshot.get_event(eid) for eid in sorted_edge_ids if snapshot.get_event(eid) is not None
-    )
-
-    # Sort root branches: direction (backward then forward) then counterparty_id
+    tx_list: list[TransactionEvent] = []
+    for eid in sorted_edge_ids:
+        ev = snapshot.get_event(eid)
+        if ev is not None:
+            tx_list.append(ev)
+    sorted_transactions: tuple[TransactionEvent, ...] = tuple(tx_list)
     sorted_branches = tuple(
         sorted(
             covered_root_branches,

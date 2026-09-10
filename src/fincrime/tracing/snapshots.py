@@ -6,6 +6,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Literal
 
 import networkx as nx  # type: ignore[import-untyped]
 import polars as pl
@@ -100,11 +101,8 @@ def validate_contained_path(raw: str | Path) -> Path:
         cwd,
         *cwd.parents,
         Path(tempfile.gettempdir()).resolve(),
+        Path.home().resolve(),
     ]
-
-    anchor = Path(resolved.anchor).resolve()
-    if anchor.exists():
-        allowed_roots.append(anchor)
 
     for root in allowed_roots:
         try:
@@ -370,7 +368,7 @@ def load_trace_snapshot(
     time_basis_str = params_dict.get("time_basis")
     obs_start: datetime | None = None
     tick_usec: int | None = None
-
+    time_basis: Literal["SYNTHETIC_TICKS", "EVENT_TIME"]
     if lineage.adapter_name == "AMLSimSampleAdapter" or time_basis_str == "SYNTHETIC_TICKS":
         if (
             "observation_start" not in params_dict
