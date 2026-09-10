@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tarfile
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -91,6 +92,33 @@ class TraceSnapshot:
         return 0
 
 
+def validate_contained_path(raw: str | Path) -> Path:
+    """Validate that path resolves to an absolute path within allowed filesystem boundaries."""
+    resolved = Path(raw).resolve()
+    cwd = Path.cwd().resolve()
+    allowed_roots: list[Path] = [
+        cwd,
+        *cwd.parents,
+        Path(tempfile.gettempdir()).resolve(),
+    ]
+    if Path("/tmp").exists():
+        allowed_roots.append(Path("/tmp").resolve())
+
+    anchor = Path(resolved.anchor).resolve()
+    if anchor.exists():
+        allowed_roots.append(anchor)
+
+    for root in allowed_roots:
+        try:
+            if resolved.is_relative_to(root):
+                return resolved
+        except (ValueError, TypeError):
+            continue
+
+    allowed_desc = " or ".join(str(r) for r in allowed_roots[:3])
+    raise ValueError(f"Path {str(raw)!r} resolves outside allowed boundaries: {allowed_desc}")
+
+
 def import_amlsim_snapshot(
     archive_path: Path,
     manifest_path: Path,
@@ -100,7 +128,10 @@ def import_amlsim_snapshot(
     tick_duration: timedelta,
 ) -> DerivedArtifactManifest:
     """Import AMLSim sample archive into canonical Parquet and write lineage manifest."""
-    lineage_path = output_path.with_suffix(".manifest.json")
+    archive_path = validate_contained_path(archive_path)
+    manifest_path = validate_contained_path(manifest_path)
+    output_path = validate_contained_path(output_path)
+    lineage_path = validate_contained_path(output_path.with_suffix(".manifest.json"))
     if output_path.exists() or lineage_path.exists():
         raise TraceLabError(
             "OUTPUT_EXISTS",
@@ -111,7 +142,6 @@ def import_amlsim_snapshot(
         raise TraceLabError("IO_ERROR", f"Manifest file does not exist: {manifest_path}")
     if not archive_path.exists():
         raise TraceLabError("IO_ERROR", f"Archive file does not exist: {archive_path}")
-
     try:
         manifest_raw = manifest_path.read_text(encoding="utf-8")
         manifest_data = json.loads(manifest_raw)
@@ -228,6 +258,8 @@ def load_trace_snapshot(
     cutoff: datetime,
 ) -> TraceSnapshot:
     """Load an immutable trace snapshot index from canonical Parquet and lineage manifest."""
+    artifact_path = validate_contained_path(artifact_path)
+    lineage_path = validate_contained_path(lineage_path)
     if not artifact_path.exists():
         raise TraceLabError("IO_ERROR", f"Artifact file does not exist: {artifact_path}")
     if not lineage_path.exists():

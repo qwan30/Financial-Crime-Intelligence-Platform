@@ -33,16 +33,18 @@ def main() -> int:
     pilot.add_argument("--temporary-bytes", type=int, required=True)
     pilot.add_argument("--headroom-bytes", type=int, required=True)
 
+    from fincrime.tracing.snapshots import validate_contained_path
+
     import_p = subparsers.add_parser("trace-import-amlsim")
-    import_p.add_argument("--archive", type=Path, required=True)
-    import_p.add_argument("--manifest", type=Path, required=True)
-    import_p.add_argument("--output", type=Path, required=True)
+    import_p.add_argument("--archive", type=validate_contained_path, required=True)
+    import_p.add_argument("--manifest", type=validate_contained_path, required=True)
+    import_p.add_argument("--output", type=validate_contained_path, required=True)
     import_p.add_argument("--observation-start", required=True)
     import_p.add_argument("--tick-seconds", type=int, required=True)
 
     trace_p = subparsers.add_parser("trace")
-    trace_p.add_argument("--artifact", type=Path, required=True)
-    trace_p.add_argument("--lineage", type=Path, required=True)
+    trace_p.add_argument("--artifact", type=validate_contained_path, required=True)
+    trace_p.add_argument("--lineage", type=validate_contained_path, required=True)
     trace_p.add_argument("--cutoff", required=True)
     trace_p.add_argument("--account", default=None)
     trace_p.add_argument("--transaction", default=None)
@@ -52,7 +54,7 @@ def main() -> int:
     trace_p.add_argument("--max-gap-seconds", type=int, default=None)
     trace_p.add_argument("--max-hops", type=int, default=4)
     trace_p.add_argument("--max-edges", type=int, default=100)
-    trace_p.add_argument("--output", type=Path, default=None)
+    trace_p.add_argument("--output", type=validate_contained_path, default=None)
     args = parser.parse_args()
 
     if args.command == "resource-profile":

@@ -14,7 +14,11 @@ from fincrime.tracing.models import (
     TraceRequest,
     TransactionSeed,
 )
-from fincrime.tracing.snapshots import import_amlsim_snapshot, load_trace_snapshot
+from fincrime.tracing.snapshots import (
+    import_amlsim_snapshot,
+    load_trace_snapshot,
+    validate_contained_path,
+)
 
 
 def _parse_aware_datetime(val: str, field_name: str) -> datetime:
@@ -122,7 +126,9 @@ def handle_trace(args: argparse.Namespace) -> int:
         )
 
         # Preflight output if provided
-        output_file: Path | None = args.output
+        output_file: Path | None = (
+            validate_contained_path(args.output) if args.output is not None else None
+        )
         if output_file is not None and output_file.exists():
             raise TraceLabError("OUTPUT_EXISTS", f"Output file already exists: {output_file}")
 
