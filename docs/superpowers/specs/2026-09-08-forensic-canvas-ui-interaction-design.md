@@ -1,10 +1,10 @@
 # Đặc tả Thiết kế & Tương tác: Bàn cờ Điều tra Đồ thị Tội phạm Tài chính (Forensic Graph Canvas & Interaction Specification)
 
-**Mã tài liệu:** `SPEC-AML-CANVAS-2026-01`  
-**Ngày ban hành:** 2026-09-08  
-**Trạng thái:** `APPROVED_DESIGN`  
-**Định vị kiến trúc:** Palantir Gotham / Chainalysis Reactor / Maltego Investigation Archetype  
-**Mục tiêu áp dụng:** Giao diện điều tra viên (`apps/investigator-web`) kết nối cùng Backend FastAPI (`apps/case_api`) và cơ sở dữ liệu PostgreSQL 17  
+**Mã tài liệu:** `SPEC-AML-CANVAS-2026-01`
+**Ngày ban hành:** 2026-09-08
+**Trạng thái:** `APPROVED_DESIGN`
+**Định vị kiến trúc:** Palantir Gotham / Chainalysis Reactor / Maltego Investigation Archetype
+**Mục tiêu áp dụng:** Giao diện điều tra viên (`apps/investigator-web`) kết nối cùng Backend FastAPI (`apps/case_api`) và cơ sở dữ liệu PostgreSQL 17
 
 ---
 
