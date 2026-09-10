@@ -79,6 +79,7 @@ export type NodeCardAnnotationProps = {
   isSelected: boolean;
   hiddenFlow?: HiddenFlow;
   onHiddenFlow?: (nodeId: string) => void;
+  onSelectNode?: (nodeId: string) => void;
 };
 
 export const NodeCardAnnotation: React.FC<NodeCardAnnotationProps> = ({
@@ -89,6 +90,7 @@ export const NodeCardAnnotation: React.FC<NodeCardAnnotationProps> = ({
   isSelected,
   hiddenFlow,
   onHiddenFlow,
+  onSelectNode,
 }) => {
   const title = node.accountHolderName ?? node.nodeId;
   const bankLine = `${node.bankShortName ?? "Chưa có dữ liệu"} •••• ${
@@ -122,6 +124,12 @@ export const NodeCardAnnotation: React.FC<NodeCardAnnotationProps> = ({
         top: `${top}px`,
         width: `${size.width}px`,
         height: `${size.height}px`,
+        pointerEvents: "auto",
+        cursor: "pointer",
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelectNode?.(node.nodeId);
       }}
     >
       <div className="canvas-card-header">

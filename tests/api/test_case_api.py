@@ -31,6 +31,7 @@ def test_setup() -> Iterator[tuple[TestClient, EvidenceStore, CaseService]]:
         finally:
             app.dependency_overrides.clear()
 
+
 def test_healthz(test_setup: tuple[TestClient, EvidenceStore, CaseService]) -> None:
     client, _, _ = test_setup
     response = client.get("/healthz")

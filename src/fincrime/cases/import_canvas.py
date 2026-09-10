@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine, select

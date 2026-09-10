@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: [["list"], ["json", { outputFile: "../../.orchestration/evidence/playwright-report.json" }]],
   use: {
     baseURL: "http://localhost:4173",
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
   },
   webServer: {
     command: "npm run preview -- --port 4173",
@@ -19,8 +19,18 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "chromium-1440",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "chromium-1920",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1920, height: 1080 },
+      },
     },
   ],
 });

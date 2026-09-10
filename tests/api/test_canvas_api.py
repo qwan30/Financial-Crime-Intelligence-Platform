@@ -3,13 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-import pytest
 
 from apps.case_api.main import create_app
 from fincrime.cases.import_canvas import import_canvas_case
-from fincrime.cases.models import CaseSnapshot
-from fincrime.cases.service import CaseService
-from fincrime.evidence.store import EvidenceStore
 
 
 def test_pin_survives_restart_and_unpin_keeps_evidence(postgres_url: str) -> None:

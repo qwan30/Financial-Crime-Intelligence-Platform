@@ -82,7 +82,7 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
   projection,
   clusters: _clusters,
   pinnedEdgeIds,
-  pendingPinEdgeId: _pendingPinEdgeId,
+  pendingPinEdgeId,
   onSelection,
   onFocus,
   onHiddenFlow,
@@ -239,11 +239,11 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
       placed.map((a) => ({
         annotation: a,
         label: edgeLabelMap.get(a.edgeId) ?? a.edgeId,
-        isPinned: pinnedEdgeIds.has(a.edgeId),
+        isPinned: pinnedEdgeIds.has(a.edgeId) || a.edgeId === pendingPinEdgeId,
         edgeId: a.edgeId,
       }))
     );
-  }, [trace.nodes, trace.edges, cardSizes, projection.visibleEdgeIds, pinnedEdgeIds]);
+  }, [trace.nodes, trace.edges, cardSizes, projection.visibleEdgeIds, pinnedEdgeIds, pendingPinEdgeId]);
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -391,7 +391,7 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
 
       for (const edge of trace.edges) {
         const isVisible = projection.visibleEdgeIds.has(edge.edgeId);
-        const isPinned = pinnedEdgeIds.has(edge.edgeId);
+        const isPinned = pinnedEdgeIds.has(edge.edgeId) || edge.edgeId === pendingPinEdgeId;
         const isDimmed = view.focusedNodeId !== null && !focused.edgeIds.has(edge.edgeId);
 
         const w = edgeWidth(edge);
@@ -454,6 +454,7 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
     cardSizes,
     projection.visibleEdgeIds,
     pinnedEdgeIds,
+    pendingPinEdgeId,
     view.focusedNodeId,
     focused.edgeIds,
     caseId,
@@ -592,6 +593,10 @@ export const ForensicCanvas: React.FC<ForensicCanvasProps> = ({
               isSelected={isSelected}
               hiddenFlow={hiddenFlow}
               onHiddenFlow={onHiddenFlow}
+              onSelectNode={(nid) => {
+                onSelectionRef.current({ kind: "node", id: nid });
+                onFocusRef.current(nid);
+              }}
             />
           );
         })}

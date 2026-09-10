@@ -5,7 +5,12 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from fincrime.agent.tools import GraphRepository, ReferentialIntegrityError, TraceEdge, TraceGraphResult, TraceNode
+from fincrime.agent.tools import (
+    GraphRepository,
+    TraceEdge,
+    TraceGraphResult,
+    TraceNode,
+)
 from fincrime.cases.models import CaseSnapshot
 from fincrime.cases.service import CaseService
 
@@ -35,7 +40,9 @@ class CanvasService:
 
     def _resolve_graph_facts(
         self, snapshot: CaseSnapshot
-    ) -> tuple[dict[str, TraceNode], dict[str, TraceEdge], dict[str, list[TraceEdge]], dict[str, int]]:
+    ) -> tuple[
+        dict[str, TraceNode], dict[str, TraceEdge], dict[str, list[TraceEdge]], dict[str, int]
+    ]:
         seed_entity = snapshot.seed_entity
         seed_node = self._graph.get_node(seed_entity)
         case_edges = self._graph.get_edges(snapshot.trace_edge_ids)
@@ -92,7 +99,8 @@ class CanvasService:
 
         # Compute time bounds and unknown count across all <=3-hop scope edges
         scope_edges = [
-            e for e in edge_map.values()
+            e
+            for e in edge_map.values()
             if dist.get(e.source, 999) <= 3 and dist.get(e.target, 999) <= 3
         ]
         timestamped = [e.timestamp for e in scope_edges if e.timestamp is not None]
@@ -102,7 +110,8 @@ class CanvasService:
 
         # Initial edges: seed incident edges whose endpoints have distance <= 1
         initial_edge_candidates = [
-            e for e in adj.get(seed_entity, [])
+            e
+            for e in adj.get(seed_entity, [])
             if dist.get(e.source, 999) <= 1 and dist.get(e.target, 999) <= 1
         ]
         # Deduplicate while preserving sort order
@@ -183,13 +192,15 @@ class CanvasService:
 
         # Candidate edges are selected node's incident edges with both endpoints <= 3
         candidate_edges = [
-            e for e in adj.get(node_id, [])
+            e
+            for e in adj.get(node_id, [])
             if dist.get(e.source, 999) <= 3 and dist.get(e.target, 999) <= 3
         ]
 
         # Scope edges across all <=3-hop scope
         scope_edges = [
-            e for e in edge_map.values()
+            e
+            for e in edge_map.values()
             if dist.get(e.source, 999) <= 3 and dist.get(e.target, 999) <= 3
         ]
         timestamped = [e.timestamp for e in scope_edges if e.timestamp is not None]

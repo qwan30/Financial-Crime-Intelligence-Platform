@@ -14,7 +14,6 @@ from fincrime.agent.tools import (
     TraceEdge,
     TraceGraphResult,
     TraceNode,
-    TypologyTag,
     get_case_summary,
     get_fund_trace,
     get_mitigating_evidence,
@@ -103,6 +102,8 @@ def test_trace_node_and_edge_models() -> None:
             relationship_type="TRANSFER",
             identity_confidence=0.5,
         )
+
+
 def test_trace_node_new_metadata_fields() -> None:
     node = TraceNode(
         node_id="acc:001",
@@ -154,7 +155,7 @@ def test_trace_edge_new_metadata_fields() -> None:
             flow_amount=100.0,
             relationship_type="TRANSFER",
             identity_confidence=0.5,
-            timestamp=datetime(2026, 9, 8, 8, 15),
+            timestamp=datetime(2026, 9, 8, 8, 15),  # noqa: DTZ001
         )
 
     # Invalid currency

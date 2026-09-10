@@ -54,6 +54,10 @@ const mockWorkbenchData = {
           riskScore: 0.85,
           isSeed: true,
           isContext: false,
+          accountHolderName: "Nguyen Van A",
+          bankShortName: "Vietcombank",
+          accountLast4: "1234",
+          badge: "SEED_HUB",
         },
         {
           nodeId: "account:dest_mule_01",
@@ -61,6 +65,10 @@ const mockWorkbenchData = {
           riskScore: 0.72,
           isSeed: false,
           isContext: false,
+          accountHolderName: "Tran Thi B",
+          bankShortName: "Sacombank",
+          accountLast4: "5678",
+          badge: "SMURFING",
         },
         {
           nodeId: "account:context_bank_hq",
@@ -68,6 +76,10 @@ const mockWorkbenchData = {
           riskScore: 0.15,
           isSeed: false,
           isContext: true,
+          accountHolderName: "Chi nhanh Ngan hang",
+          bankShortName: "Vietcombank",
+          accountLast4: "9012",
+          badge: "BENIGN",
         },
       ],
       edges: [
@@ -75,7 +87,9 @@ const mockWorkbenchData = {
           edgeId: "e_001",
           source: "account:case_001",
           target: "account:dest_mule_01",
-          flowAmount: 28500,
+          flowAmount: 28500000,
+          currency: "VND",
+          timestamp: "2026-03-01T10:00:00+07:00",
           relationshipType: "WIRE_TRANSFER",
           identityConfidence: 0.92,
         },
@@ -83,13 +97,19 @@ const mockWorkbenchData = {
           edgeId: "e_002",
           source: "account:dest_mule_01",
           target: "account:context_bank_hq",
-          flowAmount: 5000,
+          flowAmount: 5000000,
+          currency: "VND",
+          timestamp: "2026-03-01T10:30:00+07:00",
           relationshipType: "SETTLEMENT",
           identityConfidence: 0.65,
         },
       ],
       isTruncated: false,
       totalHops: 2,
+      hopByNodeId: { "account:case_001": 0, "account:dest_mule_01": 1, "account:context_bank_hq": 1 },
+      timeMin: "2026-03-01T10:00:00+07:00",
+      timeMax: "2026-03-01T10:30:00+07:00",
+      unknownTimeEdgeCount: 0,
     },
     hypothesis: {
       hypothesisId: "hypo-case_001",
@@ -109,6 +129,9 @@ const mockWorkbenchData = {
       generatedAt: "2026-03-01T12:05:00Z",
       modelVersion: "deepseek-v4-flash",
     },
+    pins: [],
+    pinningAvailable: false,
+    hypothesisSnapshotHash: null,
   },
   error: null,
 };
@@ -143,11 +166,10 @@ test.describe("Investigator Workbench E2E User Journey", () => {
 
     // 1. Verify App navigation and Case header
     await expect(page.locator("text=Investigator Workbench")).toBeVisible();
-    await expect(page.locator("text=Seed Entity:")).toBeVisible();
-    await expect(page.locator("text=account:case_001")).toBeVisible();
+    await expect(page.locator("[data-testid='seed-entity']")).toContainText("account:case_001");
 
     // 2. Verify Evidence Timeline section and items
-    await expect(page.locator("h2:has-text('Evidence Timeline')")).toBeVisible();
+    await expect(page.locator("h3:has-text('Dòng thời gian chứng cứ')")).toBeVisible();
     await expect(page.locator("text=Structured cash deposit of $9,500 across 3 ATM locations")).toBeVisible();
     await expect(page.locator("text=SUPPORTING").first()).toBeVisible();
     await expect(page.locator("text=MITIGATING").first()).toBeVisible();
@@ -156,33 +178,36 @@ test.describe("Investigator Workbench E2E User Journey", () => {
     await expect(page.locator("[data-testid='trace-graph-container']")).toBeVisible();
 
     // 4. Verify AI Hypothesis Panel and Claims
-    await expect(page.locator("h2:has-text('AI Investigation Hypothesis')")).toBeVisible();
+    await expect(page.locator("h3:has-text('Giả thuyết điều tra')")).toBeVisible();
     await expect(page.locator("text=HYPOTHESIS_GENERATED")).toBeVisible();
     await expect(page.locator("text=Repeated structured deposits immediately precede outbound wire transfers.")).toBeVisible();
 
     // 5. Verify Analyst Feedback Action Panel
-    await expect(page.locator("h2:has-text('Analyst Adjudication & Feedback')")).toBeVisible();
-    await expect(page.locator("button:has-text('Submit Disposition')")).toBeVisible();
+    await expect(page.locator("h3:has-text('Phản hồi của điều tra viên')")).toBeVisible();
+    await expect(page.locator("button:has-text('Gửi đánh giá vụ án')")).toBeVisible();
   });
 
   test("allows analyst to select disposition, enter justification, and submit feedback", async ({ page }) => {
     await page.goto("/");
 
+    // Fill Analyst ID
+    const analystInput = page.locator("input[placeholder*='analyst_01']");
+    await analystInput.fill("analyst_test_01");
+
     // Select ESCALATE disposition from select combobox
-    const select = page.locator("select, [aria-label='Case Disposition']");
-    await expect(select).toBeVisible();
+    const select = page.locator("select");
     await select.selectOption("ESCALATE");
 
     // Fill reasoning
-    const textarea = page.locator("textarea, [aria-label='Adjudication Rationale']");
+    const textarea = page.locator("textarea");
     await textarea.fill("High-velocity fund layering across multiple accounts requires AML escalation.");
 
     // Submit feedback
-    const submitBtn = page.locator("button:has-text('Submit Disposition')");
+    const submitBtn = page.locator("button:has-text('Gửi đánh giá vụ án')");
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
     // Verify submission feedback
-    await expect(page.locator("text=Feedback submitted successfully")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=Đã lưu phản hồi thành công!")).toBeVisible({ timeout: 5000 });
   });
 });

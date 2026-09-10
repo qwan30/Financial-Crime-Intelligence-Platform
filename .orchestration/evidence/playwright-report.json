@@ -28,8 +28,24 @@
         "metadata": {
           "actualWorkers": 1
         },
-        "id": "chromium",
-        "name": "chromium",
+        "id": "chromium-1440",
+        "name": "chromium-1440",
+        "testDir": "D:/projects/financial-crime-intelligence-platform/apps/investigator-web/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "D:/projects/financial-crime-intelligence-platform/apps/investigator-web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-1920",
+        "name": "chromium-1920",
         "testDir": "D:/projects/financial-crime-intelligence-platform/apps/investigator-web/e2e",
         "testIgnore": [],
         "testMatch": [
@@ -70,6 +86,91 @@
   },
   "suites": [
     {
+      "title": "forensic-canvas.spec.ts",
+      "file": "forensic-canvas.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Forensic Canvas Acceptance Suite",
+          "file": "forensic-canvas.spec.ts",
+          "line": 694,
+          "column": 6,
+          "specs": [
+            {
+              "title": "exercises complete analyst journey on canvas_vn_01",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-1440",
+                  "projectName": "chromium-1440",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4814,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-10T11:49:22.527Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d0d6a79cad3c2a550dba-626370a4577d1c2bd9d4",
+              "file": "forensic-canvas.spec.ts",
+              "line": 839,
+              "column": 3
+            },
+            {
+              "title": "exercises complete analyst journey on canvas_vn_01",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-1920",
+                  "projectName": "chromium-1920",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3378,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-10T11:49:30.455Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d0d6a79cad3c2a550dba-3cc226fb8766f68d484a",
+              "file": "forensic-canvas.spec.ts",
+              "line": 839,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "workbench.spec.ts",
       "file": "workbench.spec.ts",
       "column": 0,
@@ -79,7 +180,7 @@
         {
           "title": "Investigator Workbench E2E User Journey",
           "file": "workbench.spec.ts",
-          "line": 116,
+          "line": 139,
           "column": 6,
           "specs": [
             {
@@ -91,19 +192,19 @@
                   "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
+                  "projectId": "chromium-1440",
+                  "projectName": "chromium-1440",
                   "results": [
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 442,
+                      "duration": 566,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-02T04:07:43.998Z",
+                      "startTime": "2026-09-10T11:49:27.504Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -111,9 +212,9 @@
                   "status": "expected"
                 }
               ],
-              "id": "921e070f285a8b470d11-515478a4ebc3e1fefe75",
+              "id": "921e070f285a8b470d11-f67bb4b679e97f7cc30e",
               "file": "workbench.spec.ts",
-              "line": 141,
+              "line": 164,
               "column": 3
             },
             {
@@ -125,19 +226,19 @@
                   "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
+                  "projectId": "chromium-1440",
+                  "projectName": "chromium-1440",
                   "results": [
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1889,
+                      "duration": 558,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-02T04:07:44.644Z",
+                      "startTime": "2026-09-10T11:49:28.086Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -145,9 +246,77 @@
                   "status": "expected"
                 }
               ],
-              "id": "921e070f285a8b470d11-7c462d77485acb993365",
+              "id": "921e070f285a8b470d11-782431f77e38f22c8ce2",
               "file": "workbench.spec.ts",
-              "line": 168,
+              "line": 190,
+              "column": 3
+            },
+            {
+              "title": "loads case workspace with evidence timeline, graph container, and AI hypothesis",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-1920",
+                  "projectName": "chromium-1920",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 471,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-10T11:49:34.003Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "921e070f285a8b470d11-6aac47b2570193b0a301",
+              "file": "workbench.spec.ts",
+              "line": 164,
+              "column": 3
+            },
+            {
+              "title": "allows analyst to select disposition, enter justification, and submit feedback",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-1920",
+                  "projectName": "chromium-1920",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 529,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-10T11:49:34.486Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "921e070f285a8b470d11-07d31923f7c5d9edf058",
+              "file": "workbench.spec.ts",
+              "line": 190,
               "column": 3
             }
           ]
@@ -157,9 +326,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-02T04:07:41.769Z",
-    "duration": 5288.284000000001,
-    "expected": 2,
+    "startTime": "2026-09-10T11:49:19.297Z",
+    "duration": 16668.713,
+    "expected": 6,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

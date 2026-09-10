@@ -7,15 +7,14 @@ from sqlalchemy import create_engine
 
 from fincrime.agent.tools import ReferentialIntegrityError, TraceEdge, TraceNode
 from fincrime.cases.models import AnalystFeedbackEvent, CaseSnapshot, Disposition
-from fincrime.cases.service import CaseConflict, CaseNotFound, CaseService, FeedbackConflict
+from fincrime.cases.service import CaseConflict, CaseNotFound, FeedbackConflict
 from fincrime.evidence.models import (
     EvidenceCategory,
     EvidenceItem,
     EvidencePolarity,
-    canonical_json_bytes,
     compute_sha256_hex,
 )
-from fincrime.evidence.store import EvidenceConflict, EvidenceNotFound, EvidenceStore
+from fincrime.evidence.store import EvidenceConflict, EvidenceNotFound
 from fincrime.storage.postgres import (
     PostgresCaseRepository,
     PostgresEvidenceRepository,
@@ -182,7 +181,9 @@ def test_postgres_feedback_persistence_and_conflict(postgres_url: str) -> None:
 
     ev = make_evidence_item("ev:fb:001")
     ev_repo.put(ev)
-    case = CaseSnapshot.create_new(case_id="case:fb:001", seed_entity="s1", evidence_ids=(ev.evidence_id,))
+    case = CaseSnapshot.create_new(
+        case_id="case:fb:001", seed_entity="s1", evidence_ids=(ev.evidence_id,)
+    )
     case_repo.create(case)
 
     # Feedback on nonexistent case

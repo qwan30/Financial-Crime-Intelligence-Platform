@@ -15,6 +15,7 @@ TypologyTag = Literal[
     "SEED_HUB", "SMURFING", "SHELL_CORP", "LAYERING", "CASHOUT", "CRYPTO_OTC", "BENIGN"
 ]
 
+
 class CaseSummary(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
 
@@ -82,6 +83,7 @@ class TraceEdge(BaseModel):
                 )
         return self
 
+
 class TraceGraphResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
 
@@ -93,6 +95,7 @@ class TraceGraphResult(BaseModel):
 
 class ReferentialIntegrityError(Exception):
     pass
+
 
 @runtime_checkable
 class GraphRepository(Protocol):
@@ -122,9 +125,7 @@ def bounded_trace(
         raise ValueError(f"max_edges must be in 1..100, got {max_edges}")
 
     if seed_entity not in nodes:
-        raise ReferentialIntegrityError(
-            f"Seed entity not found in graph nodes: {seed_entity}"
-        )
+        raise ReferentialIntegrityError(f"Seed entity not found in graph nodes: {seed_entity}")
 
     for edge in edges:
         if edge.source not in nodes or edge.target not in nodes:
@@ -170,6 +171,7 @@ def bounded_trace(
         is_truncated=is_truncated,
         total_hops=actual_hops,
     )
+
 
 class InMemoryGraphRepository:
     def __init__(

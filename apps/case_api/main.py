@@ -1,6 +1,7 @@
+import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-import os
 from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, Request, status
@@ -14,10 +15,6 @@ from fincrime.agent.tools import (
     InMemoryGraphRepository,
     ReferentialIntegrityError,
     TypologyTag,
-    get_fund_trace,
-)
-from fincrime.agent.workflow import (
-    investigate_case_workflow,
 )
 from fincrime.cases.models import (
     AdjudicationStatus,
@@ -135,6 +132,7 @@ class HypothesisResponse(BaseDTO):
     generated_at: str
     model_version: str | None = None
 
+
 class PinnedEvidenceResponse(BaseDTO):
     edge_id: str
     evidence_id: str
@@ -182,6 +180,8 @@ class WorkbenchData(BaseDTO):
     pins: list[PinnedEvidenceResponse] = Field(default_factory=list)
     pinning_available: bool = False
     hypothesis_snapshot_hash: str | None = None
+
+
 class GenerateHypothesisRequest(BaseDTO):
     snapshot_hash: str
 
@@ -265,18 +265,21 @@ def create_app(
     database_url: str | None = None,
 ) -> FastAPI:
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        import threading
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         resolved_db_url = database_url or os.getenv("DATABASE_URL")
         engine = None
         http_client = None
-        if (case_service is None and evidence_store is None and graph_repo is None) and resolved_db_url:
+        if (
+            case_service is None and evidence_store is None and graph_repo is None
+        ) and resolved_db_url:
             from sqlalchemy import create_engine, text
+
             from fincrime.storage.postgres import (
                 PostgresCaseRepository,
                 PostgresEvidenceRepository,
                 PostgresGraphRepository,
             )
+
             try:
                 engine = create_engine(resolved_db_url)
                 with engine.connect() as conn:
@@ -308,8 +311,10 @@ def create_app(
             if api_key_str:
                 import httpx
                 from pydantic import SecretStr
+
                 from fincrime.agent.deepseek import GuardedDeepSeekProvider
                 from fincrime.agent.settings import BudgetController, DeepSeekSettings
+
                 model_name = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
                 ds_settings = DeepSeekSettings(
                     api_key=SecretStr(api_key_str),
@@ -336,6 +341,7 @@ def create_app(
     application = FastAPI(title="Case API", version="0.1.0", lifespan=lifespan)
 
     import threading
+
     ev_store = evidence_store or EvidenceStore()
     application.state.evidence_store = ev_store
     application.state.case_service = case_service or CaseService(evidence_store=ev_store)
@@ -351,6 +357,7 @@ def create_app(
     application.state.deepseek_provider = deepseek_provider
     application.state.pinning_available = False
     application.state.engine = None
+
     @application.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
@@ -538,18 +545,27 @@ def create_app(
                 content={
                     "success": False,
                     "data": None,
-                    "error": {"code": "SNAPSHOT_REQUIRED", "message": "If-Match header is required"},
+                    "error": {
+                        "code": "SNAPSHOT_REQUIRED",
+                        "message": "If-Match header is required",
+                    },
                 },
             )
         expected_hash = if_match.strip().strip('"')
 
-        if not getattr(request.app.state, "pinning_available", False) or getattr(request.app.state, "engine", None) is None:
+        if (
+            not getattr(request.app.state, "pinning_available", False)
+            or getattr(request.app.state, "engine", None) is None
+        ):
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={
                     "success": False,
                     "data": None,
-                    "error": {"code": "PERSISTENCE_UNAVAILABLE", "message": "PostgreSQL storage is not configured"},
+                    "error": {
+                        "code": "PERSISTENCE_UNAVAILABLE",
+                        "message": "PostgreSQL storage is not configured",
+                    },
                 },
             )
 
@@ -580,7 +596,10 @@ def create_app(
                 content={
                     "success": False,
                     "data": None,
-                    "error": {"code": "EDGE_NOT_IN_CASE", "message": f"Edge not in case: {command.edge_id}"},
+                    "error": {
+                        "code": "EDGE_NOT_IN_CASE",
+                        "message": f"Edge not in case: {command.edge_id}",
+                    },
                 },
             )
         except SnapshotConflict as exc:
@@ -640,7 +659,9 @@ def create_app(
                     relationship_type=p.transaction.relationship_type,
                     identity_confidence=p.transaction.identity_confidence,
                     currency=p.transaction.currency,
-                    timestamp=p.transaction.timestamp.isoformat() if p.transaction.timestamp else None,
+                    timestamp=p.transaction.timestamp.isoformat()
+                    if p.transaction.timestamp
+                    else None,
                 ),
             )
             for p in pinned_case.pins
@@ -755,7 +776,6 @@ def create_app(
         )
         return SuccessEnvelope[TraceGraphResponse](data=trace_resp)
 
-
     @application.post("/cases/{case_id}/hypothesis", response_model=HypothesisEnvelope)
     def generate_hypothesis(
         case_id: str,
@@ -767,12 +787,14 @@ def create_app(
         settings_dep: SettingsDep,
     ) -> Any:
         import threading
+
         pinning_available = getattr(request.app.state, "pinning_available", False)
         engine = getattr(request.app.state, "engine", None)
 
         try:
             if pinning_available and engine is not None:
                 from fincrime.cases.pinning import PinningService
+
                 pin_svc = PinningService(engine)
                 pinned_case = pin_svc.read(case_id)
                 cs = pinned_case.case
@@ -832,6 +854,7 @@ def create_app(
                     )
 
             from fincrime.agent.workflow import investigate_case_workflow
+
             provider = getattr(request.app.state, "deepseek_provider", None)
             res = investigate_case_workflow(
                 case_id=case_id,
@@ -847,6 +870,7 @@ def create_app(
             # Recheck current case hash before caching
             if pinning_available and engine is not None:
                 from fincrime.cases.pinning import PinningService
+
                 rechecked = PinningService(engine).read(case_id)
                 if rechecked.case.snapshot_hash != cs.snapshot_hash:
                     return JSONResponse(
@@ -897,6 +921,7 @@ def create_app(
         service: CaseServiceDep,
         ev_store_dep: EvidenceStoreDep,
         graph_repo_dep: GraphRepoDep,
+        settings_dep: SettingsDep,
     ) -> Any:
         try:
             pins_resp: list[PinnedEvidenceResponse] = []
@@ -924,7 +949,9 @@ def create_app(
                                 relationship_type=p.transaction.relationship_type,
                                 identity_confidence=p.transaction.identity_confidence,
                                 currency=p.transaction.currency,
-                                timestamp=p.transaction.timestamp.isoformat() if p.transaction.timestamp else None,
+                                timestamp=p.transaction.timestamp.isoformat()
+                                if p.transaction.timestamp
+                                else None,
                             ),
                         )
                     )

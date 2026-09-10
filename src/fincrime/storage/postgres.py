@@ -158,7 +158,10 @@ def put_graph_edge(conn: Connection, edge: TraceEdge) -> TraceEdge:
     edge_bytes = canonical_json_bytes(edge.model_dump(mode="json"))
     s_stmt = select(graph_nodes.c.node_id).where(graph_nodes.c.node_id == edge.source)
     t_stmt = select(graph_nodes.c.node_id).where(graph_nodes.c.node_id == edge.target)
-    if conn.execute(s_stmt).scalar_one_or_none() is None or conn.execute(t_stmt).scalar_one_or_none() is None:
+    if (
+        conn.execute(s_stmt).scalar_one_or_none() is None
+        or conn.execute(t_stmt).scalar_one_or_none() is None
+    ):
         raise ReferentialIntegrityError(f"Edge {edge.edge_id} references missing endpoint node")
 
     stmt = select(graph_edges).where(graph_edges.c.edge_id == edge.edge_id)
@@ -256,7 +259,10 @@ class PostgresEvidenceRepository:
         with self._engine.connect() as conn:
             stmt = select(evidence_items).where(evidence_items.c.evidence_id.in_(evidence_ids))
             rows = conn.execute(stmt).all()
-            items_by_id = {row.evidence_id: EvidenceItem.model_validate_json(json.dumps(row.payload)) for row in rows}
+            items_by_id = {
+                row.evidence_id: EvidenceItem.model_validate_json(json.dumps(row.payload))
+                for row in rows
+            }
             results: list[EvidenceItem] = []
             for eid in evidence_ids:
                 if eid not in items_by_id:
@@ -291,7 +297,9 @@ class PostgresGraphRepository:
         with self._engine.connect() as conn:
             stmt = select(graph_edges).where(graph_edges.c.edge_id.in_(edge_ids))
             rows = conn.execute(stmt).all()
-            edges_by_id = {row.edge_id: TraceEdge.model_validate_json(json.dumps(row.payload)) for row in rows}
+            edges_by_id = {
+                row.edge_id: TraceEdge.model_validate_json(json.dumps(row.payload)) for row in rows
+            }
             missing = [eid for eid in edge_ids if eid not in edges_by_id]
             if missing:
                 raise ReferentialIntegrityError(f"Requested edges not found: {missing}")
@@ -330,8 +338,7 @@ class PostgresGraphRepository:
                 select(graph_nodes).where(graph_nodes.c.node_id.in_(needed_node_ids))
             ).all()
             nodes_by_id = {
-                r.node_id: TraceNode.model_validate_json(json.dumps(r.payload))
-                for r in node_rows
+                r.node_id: TraceNode.model_validate_json(json.dumps(r.payload)) for r in node_rows
             }
             for nid in needed_node_ids:
                 if nid not in nodes_by_id:

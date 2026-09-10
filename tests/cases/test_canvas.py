@@ -5,9 +5,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
-from fincrime.agent.tools import InMemoryGraphRepository, ReferentialIntegrityError, TraceEdge, TraceNode
+from fincrime.agent.tools import (
+    InMemoryGraphRepository,
+    ReferentialIntegrityError,
+    TraceEdge,
+    TraceNode,
+)
 from fincrime.cases.canvas import CanvasService, CanvasTrace, InvalidExpansion, SnapshotConflict
 from fincrime.cases.models import CaseSnapshot
 from fincrime.cases.service import CaseService
@@ -20,7 +24,9 @@ def load_fixture_data() -> dict:
     return json.loads(fixture_path.read_text(encoding="utf-8"))
 
 
-def build_canvas_setup(data: dict | None = None) -> tuple[CanvasService, str, str, InMemoryGraphRepository, CaseService]:
+def build_canvas_setup(
+    data: dict | None = None,
+) -> tuple[CanvasService, str, str, InMemoryGraphRepository, CaseService]:
     if data is None:
         data = load_fixture_data()
 
@@ -71,6 +77,7 @@ def build_canvas_setup(data: dict | None = None) -> tuple[CanvasService, str, st
             "payload_summary": ev["payloadSummary"],
         }
         from fincrime.evidence.models import compute_sha256_hex
+
         real_hash = compute_sha256_hex(raw_ev)
         item = EvidenceItem(
             **raw_ev,
@@ -97,7 +104,7 @@ def build_canvas_setup(data: dict | None = None) -> tuple[CanvasService, str, st
 
 
 def test_canvas_initial_one_hop_boundary() -> None:
-    canvas_service, case_id, snapshot_hash, _, _ = build_canvas_setup()
+    canvas_service, case_id, _snapshot_hash, _, _ = build_canvas_setup()
     trace = canvas_service.initial(case_id)
 
     assert isinstance(trace, CanvasTrace)

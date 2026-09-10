@@ -80,6 +80,7 @@ class CaseService:
     ) -> None:
         self._evidence_store = evidence_store or EvidenceStore()
         self._repo = repository or InMemoryCaseRepository()
+
     def create(
         self, case: CaseSnapshot, evidence_store: EvidenceStore | None = None
     ) -> CaseSnapshot:

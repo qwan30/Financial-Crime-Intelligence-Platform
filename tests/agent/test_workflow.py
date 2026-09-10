@@ -364,7 +364,7 @@ def test_workflow_pinned_evidence_prompt_and_citations() -> None:
             },
         )
 
-    workflow, case_service, evidence_store, _, _ = setup_test_environment(
+    workflow, case_service, _evidence_store, _, _ = setup_test_environment(
         evidence_ids=("ev:001", "ev:002"),
         mock_handler=handler,
     )
