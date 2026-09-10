@@ -3,7 +3,7 @@ name = "financial-crime-intelligence-platform"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "pydantic>=2.11,<3",
+  "pydantic>=2.13.5,<3",
   "polars>=1.30,<2",
   "pyarrow>=20,<21",
   "scikit-learn>=1.6,<2",
