@@ -45,10 +45,14 @@ def handle_trace_import_amlsim(args: argparse.Namespace) -> int:
         obs_start = _parse_aware_datetime(args.observation_start, "--observation-start")
         tick_duration = timedelta(seconds=args.tick_seconds)
 
+        archive_path = validate_contained_path(args.archive)
+        manifest_path = validate_contained_path(args.manifest)
+        output_path = validate_contained_path(args.output)
+
         lineage = import_amlsim_snapshot(
-            archive_path=args.archive,
-            manifest_path=args.manifest,
-            output_path=args.output,
+            archive_path=archive_path,
+            manifest_path=manifest_path,
+            output_path=output_path,
             observation_start=obs_start,
             tick_duration=tick_duration,
         )
@@ -132,9 +136,11 @@ def handle_trace(args: argparse.Namespace) -> int:
         if output_file is not None and output_file.exists():
             raise TraceLabError("OUTPUT_EXISTS", f"Output file already exists: {output_file}")
 
+        artifact_path = validate_contained_path(args.artifact)
+        lineage_path = validate_contained_path(args.lineage)
         snapshot = load_trace_snapshot(
-            artifact_path=args.artifact,
-            lineage_path=args.lineage,
+            artifact_path=artifact_path,
+            lineage_path=lineage_path,
             cutoff=cutoff,
         )
 

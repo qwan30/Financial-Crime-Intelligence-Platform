@@ -101,8 +101,6 @@ def validate_contained_path(raw: str | Path) -> Path:
         *cwd.parents,
         Path(tempfile.gettempdir()).resolve(),
     ]
-    if Path("/tmp").exists():
-        allowed_roots.append(Path("/tmp").resolve())
 
     anchor = Path(resolved.anchor).resolve()
     if anchor.exists():
