@@ -100,7 +100,7 @@ export function fundingClusters(
       }
 
       if (distinctSources.size >= 5) {
-        const sortedSources = Array.from(distinctSources).sort();
+        const sortedSources = Array.from(distinctSources).sort((a, b) => a.localeCompare(b));
         candidates.push({
           targetId,
           firstMs: windowEdges[0].timeMs,
@@ -137,7 +137,7 @@ export function fundingClusters(
       );
       const memberEdgeIds = Array.from(
         new Set(memberEdges.map((m) => m.edge.edgeId))
-      ).sort();
+      ).sort((a, b) => a.localeCompare(b));
 
       let totalVnd = 0n;
       let minMs = Number.MAX_SAFE_INTEGER;
@@ -156,7 +156,7 @@ export function fundingClusters(
       acceptedClusters.push({
         id: clusterId,
         targetId: cand.targetId,
-        memberNodeIds: availableSources.sort(),
+        memberNodeIds: availableSources.sort((a, b) => a.localeCompare(b)),
         memberEdgeIds,
         amountVnd: totalVnd,
         firstMs: minMs,
@@ -258,7 +258,7 @@ export function clusterProjection(
 
   const bundles: ClusterBundle[] = [];
   for (const b of vndBundles.values()) {
-    b.memberEdgeIds.sort();
+    b.memberEdgeIds.sort((a, b) => a.localeCompare(b));
     bundles.push({
       id: `bundle:${encodeURIComponent(b.source)}:${encodeURIComponent(
         b.target

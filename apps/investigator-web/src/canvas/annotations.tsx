@@ -114,6 +114,8 @@ export const NodeCardAnnotation: React.FC<NodeCardAnnotationProps> = ({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`canvas-node-card ${riskClass} ${isDimmed ? "dimmed" : ""} ${
         isSelected ? "selected" : ""
       }`}
@@ -130,6 +132,12 @@ export const NodeCardAnnotation: React.FC<NodeCardAnnotationProps> = ({
       onClick={(e) => {
         e.stopPropagation();
         onSelectNode?.(node.nodeId);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelectNode?.(node.nodeId);
+        }
       }}
     >
       <div className="canvas-card-header">
