@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -30,13 +31,21 @@ from fincrime.agent.settings import (
 )
 from fincrime.agent.tools import (
     InMemoryGraphRepository,
+    get_fund_trace,
 )
 from fincrime.agent.workflow import (
     HypothesisStatus,
     InvestigatorWorkflow,
 )
-from fincrime.cases.service import CaseService
-from fincrime.evidence.store import EvidenceStore
+from fincrime.cases.models import CaseSnapshot
+from fincrime.cases.service import CaseConflict, CaseService
+from fincrime.evidence.models import (
+    EvidenceCategory,
+    EvidenceItem,
+    EvidencePolarity,
+    compute_sha256_hex,
+)
+from fincrime.evidence.store import EvidenceConflict, EvidenceStore
 
 _MANIFEST_PATH = Path("data/manifests/eval_corpus_gold_cases.json")
 
@@ -92,7 +101,25 @@ def test_populate_corpus_fixtures() -> None:
     assert len(populated_ids) == 10
     assert populated_ids == [f"gold-{i:02d}" for i in range(1, 11)]
 
-    # Verify idempotency
+    # get_fund_trace('gold-01', ...) returns exactly the two manifest edge IDs and three actual nodes
+    trace_01 = get_fund_trace("gold-01", case_service, graph_repo)
+    assert len(trace_01.edges) == 2
+    assert {e.edge_id for e in trace_01.edges} == {"edge:gold-01-01", "edge:gold-01-02"}
+    assert len(trace_01.nodes) == 3
+    assert {n.node_id for n in trace_01.nodes} == {
+        "acct:mule-hub-01",
+        "acct:mule-sender-01",
+        "acct:mule-sender-02",
+    }
+
+    # gold-09 has its seed and zero edges
+    trace_09 = get_fund_trace("gold-09", case_service, graph_repo)
+    assert len(trace_09.edges) == 0
+    assert len(trace_09.nodes) == 1
+    assert trace_09.nodes[0].node_id == "acct:adv-seed-09"
+    assert trace_09.nodes[0].is_seed is True
+
+    # Verify idempotency: a second identical load succeeds
     re_populated = populate_corpus_fixtures(
         manifest_path=_MANIFEST_PATH,
         case_service=case_service,
@@ -100,6 +127,55 @@ def test_populate_corpus_fixtures() -> None:
         graph_repo=graph_repo,
     )
     assert re_populated == populated_ids
+
+    # Preloaded conflicting evidence fails instead of being swallowed
+    conflict_evidence_store = EvidenceStore()
+    conflict_case_service = CaseService(evidence_store=conflict_evidence_store)
+    conflict_graph_repo = InMemoryGraphRepository()
+
+    bad_ev_data = {
+        "evidence_id": "ev:gold-01-01",
+        "category": EvidenceCategory.OBSERVED,
+        "source_reference": "conflicting-source",
+        "polarity": EvidencePolarity.SUPPORTING,
+        "snapshot_time": datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+        "generation_method_version": "v9.9.9",
+        "confidence": 0.1,
+        "payload_summary": "Conflicting payload",
+    }
+    h_bad = compute_sha256_hex(bad_ev_data)
+    conflict_evidence_store.put(EvidenceItem(**bad_ev_data, integrity_hash=h_bad))
+
+    with pytest.raises(EvidenceConflict):
+        populate_corpus_fixtures(
+            manifest_path=_MANIFEST_PATH,
+            case_service=conflict_case_service,
+            evidence_store=conflict_evidence_store,
+            graph_repo=conflict_graph_repo,
+        )
+
+    # Preloaded conflicting case fails instead of being swallowed
+    conflict_evidence_store2 = EvidenceStore()
+    conflict_case_service2 = CaseService(evidence_store=conflict_evidence_store2)
+    conflict_graph_repo2 = InMemoryGraphRepository()
+
+    bad_case_data = {
+        "case_id": "gold-01",
+        "seed_entity": "conflicting-seed",
+        "evidence_ids": (),
+        "trace_edge_ids": (),
+        "created_at": datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+    }
+    h_bad_case = compute_sha256_hex(bad_case_data)
+    conflict_case_service2.create(CaseSnapshot(**bad_case_data, snapshot_hash=h_bad_case))
+
+    with pytest.raises(CaseConflict):
+        populate_corpus_fixtures(
+            manifest_path=_MANIFEST_PATH,
+            case_service=conflict_case_service2,
+            evidence_store=conflict_evidence_store2,
+            graph_repo=conflict_graph_repo2,
+        )
 
 
 # =========================================================================

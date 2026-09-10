@@ -28,14 +28,14 @@ from fincrime.agent.workflow import (
     InvestigatorWorkflow,
 )
 from fincrime.cases.models import CaseSnapshot
-from fincrime.cases.service import CaseConflict, CaseService
+from fincrime.cases.service import CaseService
 from fincrime.evidence.models import (
     EvidenceCategory,
     EvidenceItem,
     EvidencePolarity,
     compute_sha256_hex,
 )
-from fincrime.evidence.store import EvidenceConflict, EvidenceStore
+from fincrime.evidence.store import EvidenceStore
 
 logger = logging.getLogger(__name__)
 
@@ -164,17 +164,41 @@ def populate_corpus_fixtures(
         manifest_data = json.load(f)
 
     populated_case_ids: list[str] = []
+    seen_case_ids: set[str] = set()
 
     for case_spec in manifest_data.get("cases", []):
-        cid = case_spec["caseId"]
-        seed = case_spec.get("seedEntity", f"account:{cid}")
-        evidence_defs = case_spec.get("evidence", [])
-        trace_defs = case_spec.get("trace", {})
+        cid = case_spec.get("caseId")
+        if not cid:
+            raise ManifestIntegrityError("Case missing caseId")
+        if cid in seen_case_ids:
+            raise ManifestIntegrityError(f"Duplicate caseId '{cid}' in manifest")
+        seen_case_ids.add(cid)
 
-        ev_ids: list[str] = []
+        seed = case_spec.get("seedEntity")
+        if not seed:
+            raise ManifestIntegrityError(f"Case {cid} missing seedEntity")
+
+        evidence_defs = case_spec.get("evidence", [])
+        evidence_ids_def = case_spec.get("evidenceIds", [])
+        graph_edge_defs = case_spec.get("graphEdges", [])
+        trace_edge_ids_def = case_spec.get("traceEdgeIds", [])
+
+        # Validate duplicate IDs in case spec
+        if len(evidence_ids_def) != len(set(evidence_ids_def)):
+            raise ManifestIntegrityError(f"Duplicate evidenceId in case {cid} evidenceIds")
+        if len(trace_edge_ids_def) != len(set(trace_edge_ids_def)):
+            raise ManifestIntegrityError(f"Duplicate traceEdgeId in case {cid} traceEdgeIds")
+
+        # Hydrate evidence
+        defined_evidence_ids: set[str] = set()
         for ev in evidence_defs:
-            eid = ev["evidenceId"]
-            ev_ids.append(eid)
+            eid = ev.get("evidenceId")
+            if not eid:
+                raise ManifestIntegrityError(f"Case {cid} evidence item missing evidenceId")
+            if eid in defined_evidence_ids:
+                raise ManifestIntegrityError(f"Duplicate evidence definition '{eid}' in case {cid}")
+            defined_evidence_ids.add(eid)
+
             cat = EvidenceCategory(ev.get("category", "OBSERVED"))
             pol = EvidencePolarity(ev.get("polarity", "SUPPORTING"))
             t_str = ev.get("snapshotTime", "2026-03-01T10:00:00Z")
@@ -193,38 +217,68 @@ def populate_corpus_fixtures(
             }
             h_ev = compute_sha256_hex(raw_ev)
             item = EvidenceItem(**raw_ev, integrity_hash=h_ev)
-            try:
-                evidence_store.put(item)
-            except EvidenceConflict:
-                pass
+            # Propagate genuine EvidenceConflict; byte-identical replay will return existing
+            evidence_store.put(item)
 
-        trace_nodes = trace_defs.get("nodes", [])
-        for nd in trace_nodes:
-            nid = nd["nodeId"]
-            node = TraceNode(
-                node_id=nid,
-                entity_type=nd.get("entityType", "ACCOUNT"),
-                risk_score=nd.get("riskScore"),
-                is_seed=(nid == seed or nd.get("isSeed", False)),
-                is_context=nd.get("isContext", False),
-            )
-            graph_repo.add_node(node)
+        # Validate that every evidenceId in case_spec is defined
+        for eid in evidence_ids_def:
+            if eid not in defined_evidence_ids:
+                try:
+                    evidence_store.get(eid)
+                except Exception as err:
+                    raise ManifestIntegrityError(
+                        f"Case {cid} evidenceId '{eid}' not defined in evidence"
+                    ) from err
 
-        edge_ids: list[str] = []
-        trace_edges = trace_defs.get("edges", [])
-        for ed in trace_edges:
-            eid = ed["edgeId"]
-            edge_ids.append(eid)
+        # Hydrate graph edges
+        case_graph_edges: dict[str, TraceEdge] = {}
+        for ed in graph_edge_defs:
+            eid = ed.get("edgeId")
+            if not eid:
+                raise ManifestIntegrityError(f"Case {cid} graphEdge missing edgeId")
+            if eid in case_graph_edges:
+                raise ManifestIntegrityError(f"Duplicate edgeId '{eid}' in case {cid} graphEdges")
+            for req_field in ("source", "target", "flowAmount", "identityConfidence"):
+                if req_field not in ed:
+                    raise ManifestIntegrityError(
+                        f"Case {cid} edge {eid} missing required field '{req_field}'"
+                    )
+
             edge = TraceEdge(
                 edge_id=eid,
                 source=ed["source"],
                 target=ed["target"],
-                flow_amount=ed.get("flowAmount", 1000.0),
-                relationship_type=ed.get("relationshipType", "FUNDS_TRANSFER"),
-                identity_confidence=ed.get("identityConfidence", 0.95),
+                flow_amount=float(ed["flowAmount"]),
+                relationship_type="FUNDS_TRANSFER",
+                identity_confidence=float(ed["identityConfidence"]),
             )
+            case_graph_edges[eid] = edge
             graph_repo.add_edge(edge)
 
+        # Verify every traceEdgeId exists in that case's graphEdges
+        for teid in trace_edge_ids_def:
+            if teid not in case_graph_edges:
+                raise ManifestIntegrityError(
+                    f"traceEdgeId '{teid}' not found in case {cid} graphEdges"
+                )
+
+        # Build generic TraceNode records for seed and all graph endpoints
+        node_ids = {seed}
+        for edge in case_graph_edges.values():
+            node_ids.add(edge.source)
+            node_ids.add(edge.target)
+
+        for nid in sorted(node_ids):
+            node = TraceNode(
+                node_id=nid,
+                entity_type="ACCOUNT",
+                risk_score=None,
+                is_seed=(nid == seed),
+                is_context=False,
+            )
+            graph_repo.add_node(node)
+
+        # Create case snapshot
         c_time_str = case_spec.get("createdAt", "2026-03-01T12:00:00Z")
         if c_time_str.endswith("Z"):
             c_time_str = c_time_str[:-1] + "+00:00"
@@ -233,19 +287,16 @@ def populate_corpus_fixtures(
         raw_case = {
             "case_id": cid,
             "seed_entity": seed,
-            "evidence_ids": tuple(sorted(ev_ids)),
-            "trace_edge_ids": tuple(sorted(edge_ids)),
+            "evidence_ids": tuple(sorted(set(evidence_ids_def))),
+            "trace_edge_ids": tuple(sorted(set(trace_edge_ids_def))),
             "created_at": created_at,
         }
         h_case = compute_sha256_hex(raw_case)
         case_snap = CaseSnapshot(**raw_case, snapshot_hash=h_case)
-        try:
-            case_service.create(case_snap, evidence_store=evidence_store)
-        except CaseConflict:
-            pass
+        # Propagate genuine CaseConflict; byte-identical replay will return existing
+        case_service.create(case_snap, evidence_store=evidence_store)
 
         populated_case_ids.append(cid)
-
     return populated_case_ids
 
 

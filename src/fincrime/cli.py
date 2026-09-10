@@ -33,6 +33,26 @@ def main() -> int:
     pilot.add_argument("--temporary-bytes", type=int, required=True)
     pilot.add_argument("--headroom-bytes", type=int, required=True)
 
+    import_p = subparsers.add_parser("trace-import-amlsim")
+    import_p.add_argument("--archive", type=Path, required=True)
+    import_p.add_argument("--manifest", type=Path, required=True)
+    import_p.add_argument("--output", type=Path, required=True)
+    import_p.add_argument("--observation-start", required=True)
+    import_p.add_argument("--tick-seconds", type=int, required=True)
+
+    trace_p = subparsers.add_parser("trace")
+    trace_p.add_argument("--artifact", type=Path, required=True)
+    trace_p.add_argument("--lineage", type=Path, required=True)
+    trace_p.add_argument("--cutoff", required=True)
+    trace_p.add_argument("--account", default=None)
+    trace_p.add_argument("--transaction", default=None)
+    trace_p.add_argument("--direction", choices=["forward", "backward", "both"], required=True)
+    trace_p.add_argument("--window-start", required=True)
+    trace_p.add_argument("--window-end", required=True)
+    trace_p.add_argument("--max-gap-seconds", type=int, default=None)
+    trace_p.add_argument("--max-hops", type=int, default=4)
+    trace_p.add_argument("--max-edges", type=int, default=100)
+    trace_p.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
 
     if args.command == "resource-profile":
@@ -58,6 +78,14 @@ def main() -> int:
         )
         print(evidence.model_dump_json(indent=2))
         return 0
+    if args.command == "trace-import-amlsim":
+        from fincrime.tracing.cli import handle_trace_import_amlsim
+
+        return handle_trace_import_amlsim(args)
+    if args.command == "trace":
+        from fincrime.tracing.cli import handle_trace
+
+        return handle_trace(args)
     return 2
 
 
