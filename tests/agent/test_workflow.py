@@ -338,3 +338,45 @@ def test_workflow_persistence_invariants() -> None:
     # Case snapshot disposition / attributes must not have changed
     case = case_service.get("case-test-01")
     assert case.evidence_ids == ("ev:001", "ev:002")
+
+
+def test_workflow_pinned_evidence_prompt_and_citations() -> None:
+    recorded_prompts: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        prompt = body["messages"][0]["content"]
+        recorded_prompts.append(prompt)
+        raw_output = {
+            "summary": "Hypothesis citing pinned transaction.",
+            "claims": [
+                {
+                    "claim_text": "Pinned transaction is focal.",
+                    "cited_evidence_ids": ["ev:001"],
+                }
+            ],
+        }
+        return httpx.Response(
+            status_code=200,
+            json={
+                "choices": [{"message": {"content": json.dumps(raw_output)}}],
+                "usage": {"prompt_tokens": 150, "completion_tokens": 50},
+            },
+        )
+
+    workflow, case_service, _evidence_store, _, _ = setup_test_environment(
+        evidence_ids=("ev:001", "ev:002"),
+        mock_handler=handler,
+    )
+    case = case_service.get("case-test-01")
+    hypo = workflow.run(
+        "case-test-01",
+        case_snapshot=case,
+        pinned_evidence_ids=("ev:001",),
+    )
+    assert hypo.status == HypothesisStatus.HYPOTHESIS_GENERATED
+    assert len(recorded_prompts) == 1
+    prompt_text = recorded_prompts[0]
+    assert "Pinned transaction evidence IDs: ev:001" in prompt_text
+    assert "Pinning is analyst attention, not proof of suspiciousness." in prompt_text
+    assert "Do not assign risk scores, classifications, or dispositions." in prompt_text

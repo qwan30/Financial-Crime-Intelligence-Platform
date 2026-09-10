@@ -44,6 +44,10 @@ describe("api client", () => {
               riskScore: 0.85,
               isSeed: true,
               isContext: false,
+              accountHolderName: null,
+              bankShortName: null,
+              accountLast4: null,
+              badge: null,
             },
           ],
           edges: [
@@ -54,10 +58,16 @@ describe("api client", () => {
               flowAmount: 100000,
               relationshipType: "WIRE",
               identityConfidence: 0.9,
+              currency: null,
+              timestamp: null,
             },
           ],
           isTruncated: false,
           totalHops: 1,
+          hopByNodeId: { n1: 0 },
+          timeMin: null,
+          timeMax: null,
+          unknownTimeEdgeCount: 1,
         },
         hypothesis: {
           hypothesisId: "hyp-1",
@@ -73,6 +83,9 @@ describe("api client", () => {
           generatedAt: "2026-09-02T10:05:00Z",
           modelVersion: "deepseek-r1",
         },
+        pins: [],
+        pinningAvailable: false,
+        hypothesisSnapshotHash: null,
       };
 
       globalThis.fetch = vi.fn().mockResolvedValue({

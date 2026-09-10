@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -17,15 +18,18 @@ from fincrime.evidence.store import EvidenceStore
 
 
 @pytest.fixture
-def test_setup() -> tuple[TestClient, EvidenceStore, CaseService]:
+def test_setup() -> Iterator[tuple[TestClient, EvidenceStore, CaseService]]:
     evidence_store = EvidenceStore()
     case_service = CaseService(evidence_store=evidence_store)
 
     app.dependency_overrides[get_evidence_store] = lambda: evidence_store
     app.dependency_overrides[get_case_service] = lambda: case_service
 
-    client = TestClient(app)
-    return client, evidence_store, case_service
+    with TestClient(app) as client:
+        try:
+            yield client, evidence_store, case_service
+        finally:
+            app.dependency_overrides.clear()
 
 
 def test_healthz(test_setup: tuple[TestClient, EvidenceStore, CaseService]) -> None:

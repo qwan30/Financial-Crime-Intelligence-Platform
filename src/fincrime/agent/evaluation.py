@@ -19,7 +19,7 @@ from fincrime.agent.settings import (
     DeepSeekSettings,
 )
 from fincrime.agent.tools import (
-    InMemoryGraphRepository,
+    GraphRepository,
     TraceEdge,
     TraceNode,
 )
@@ -154,7 +154,7 @@ def populate_corpus_fixtures(
     manifest_path: str | Path,
     case_service: CaseService,
     evidence_store: EvidenceStore,
-    graph_repo: InMemoryGraphRepository,
+    graph_repo: GraphRepository,
 ) -> list[str]:
     path = Path(manifest_path)
     if not path.is_file():
@@ -207,6 +207,10 @@ def populate_corpus_fixtures(
                 risk_score=nd.get("riskScore"),
                 is_seed=(nid == seed or nd.get("isSeed", False)),
                 is_context=nd.get("isContext", False),
+                account_holder_name=nd.get("accountHolderName"),
+                bank_short_name=nd.get("bankShortName"),
+                account_last4=nd.get("accountLast4"),
+                badge=nd.get("badge"),
             )
             graph_repo.add_node(node)
 
@@ -215,6 +219,8 @@ def populate_corpus_fixtures(
         for ed in trace_edges:
             eid = ed["edgeId"]
             edge_ids.append(eid)
+            ts_val = ed.get("timestamp")
+            parsed_ts = datetime.fromisoformat(ts_val) if ts_val else None
             edge = TraceEdge(
                 edge_id=eid,
                 source=ed["source"],
@@ -222,6 +228,8 @@ def populate_corpus_fixtures(
                 flow_amount=ed.get("flowAmount", 1000.0),
                 relationship_type=ed.get("relationshipType", "FUNDS_TRANSFER"),
                 identity_confidence=ed.get("identityConfidence", 0.95),
+                currency=ed.get("currency"),
+                timestamp=parsed_ts,
             )
             graph_repo.add_edge(edge)
 
@@ -331,7 +339,7 @@ def evaluate_corpus(
     manifest_path: str | Path,
     case_service: CaseService,
     evidence_store: EvidenceStore,
-    graph_repo: InMemoryGraphRepository,
+    graph_repo: GraphRepository,
     settings: DeepSeekSettings | None = None,
     deepseek_provider: GuardedDeepSeekProvider | None = None,
     expected_manifest_hash: str | None = None,

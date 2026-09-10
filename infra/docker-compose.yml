@@ -42,3 +42,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+    volumes:
+      - postgres17-data:/var/lib/postgresql/data
+
+volumes:
+  postgres17-data:

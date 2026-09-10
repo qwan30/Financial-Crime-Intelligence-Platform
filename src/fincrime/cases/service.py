@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from typing import Protocol
 
 from fincrime.cases.models import (
     AnalystFeedbackEvent,
@@ -22,23 +23,21 @@ class CaseNotFound(Exception):
     pass
 
 
-class CaseService:
-    def __init__(self, evidence_store: EvidenceStore | None = None) -> None:
-        self._evidence_store = evidence_store or EvidenceStore()
+class CaseRepository(Protocol):
+    def create(self, case: CaseSnapshot) -> CaseSnapshot: ...
+    def get(self, case_id: str) -> CaseSnapshot: ...
+    def append_feedback(self, event: AnalystFeedbackEvent) -> AnalystFeedbackEvent: ...
+
+
+class InMemoryCaseRepository:
+    def __init__(self) -> None:
         self._cases: dict[str, CaseSnapshot] = {}
         self._case_bytes: dict[str, bytes] = {}
         self._feedback: dict[str, AnalystFeedbackEvent] = {}
         self._feedback_bytes: dict[str, bytes] = {}
         self._lock = threading.Lock()
 
-    def create(
-        self, case: CaseSnapshot, evidence_store: EvidenceStore | None = None
-    ) -> CaseSnapshot:
-        store = evidence_store or self._evidence_store
-        # Revalidate that every evidence_id exists in EvidenceStore
-        for eid in case.evidence_ids:
-            store.get(eid)
-
+    def create(self, case: CaseSnapshot) -> CaseSnapshot:
         case_bytes = canonical_json_bytes(case.model_dump(mode="python", by_alias=False))
         with self._lock:
             if case.case_id in self._cases:
@@ -71,3 +70,29 @@ class CaseService:
             self._feedback[event.event_id] = event
             self._feedback_bytes[event.event_id] = event_bytes
             return event
+
+
+class CaseService:
+    def __init__(
+        self,
+        evidence_store: EvidenceStore | None = None,
+        repository: CaseRepository | None = None,
+    ) -> None:
+        self._evidence_store = evidence_store or EvidenceStore()
+        self._repo = repository or InMemoryCaseRepository()
+
+    def create(
+        self, case: CaseSnapshot, evidence_store: EvidenceStore | None = None
+    ) -> CaseSnapshot:
+        store = evidence_store or self._evidence_store
+        # Revalidate that every evidence_id exists in EvidenceStore
+        for eid in case.evidence_ids:
+            store.get(eid)
+
+        return self._repo.create(case)
+
+    def get(self, case_id: str) -> CaseSnapshot:
+        return self._repo.get(case_id)
+
+    def append_feedback(self, event: AnalystFeedbackEvent) -> AnalystFeedbackEvent:
+        return self._repo.append_feedback(event)

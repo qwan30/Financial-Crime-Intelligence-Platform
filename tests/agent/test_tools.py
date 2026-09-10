@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from fincrime.agent.tools import (
     CaseSummary,
+    GraphRepository,
     InMemoryGraphRepository,
     ReferentialIntegrityError,
     TraceEdge,
@@ -101,6 +102,121 @@ def test_trace_node_and_edge_models() -> None:
             relationship_type="TRANSFER",
             identity_confidence=0.5,
         )
+
+
+def test_trace_node_new_metadata_fields() -> None:
+    node = TraceNode(
+        node_id="acc:001",
+        entity_type="account",
+        account_holder_name="Nguyễn Văn A",
+        bank_short_name="Vietcombank",
+        account_last4="2891",
+        badge="SEED_HUB",
+    )
+    assert node.account_holder_name == "Nguyễn Văn A"
+    assert node.bank_short_name == "Vietcombank"
+    assert node.account_last4 == "2891"
+    assert node.badge == "SEED_HUB"
+
+    with pytest.raises(ValidationError):
+        TraceNode(node_id="acc:001", entity_type="account", badge="INVALID_TAG")  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError):
+        TraceNode(node_id="acc:001", entity_type="account", account_last4="123")
+
+    with pytest.raises(ValidationError):
+        TraceNode(node_id="acc:001", entity_type="account", account_last4="1234a")
+
+    with pytest.raises(ValidationError):
+        TraceNode(node_id="acc:001", entity_type="account", account_holder_name="")
+
+
+def test_trace_edge_new_metadata_fields() -> None:
+    now_utc = datetime(2026, 9, 8, 8, 15, 30, 500000, tzinfo=UTC)
+    edge = TraceEdge(
+        edge_id="tx:101",
+        source="acc:001",
+        target="acc:002",
+        flow_amount=1500000.0,
+        relationship_type="NAPAS_247",
+        identity_confidence=0.98,
+        currency="VND",
+        timestamp=now_utc,
+    )
+    assert edge.currency == "VND"
+    assert edge.timestamp == now_utc
+
+    # Naive datetime rejected
+    with pytest.raises(ValidationError):
+        TraceEdge(
+            edge_id="tx:101",
+            source="acc:001",
+            target="acc:002",
+            flow_amount=100.0,
+            relationship_type="TRANSFER",
+            identity_confidence=0.5,
+            timestamp=datetime(2026, 9, 8, 8, 15),  # noqa: DTZ001
+        )
+
+    # Invalid currency
+    with pytest.raises(ValidationError):
+        TraceEdge(
+            edge_id="tx:101",
+            source="acc:001",
+            target="acc:002",
+            flow_amount=100.0,
+            relationship_type="TRANSFER",
+            identity_confidence=0.5,
+            currency="vnd",
+        )
+
+    # Non-integer VND rejected
+    with pytest.raises(ValidationError):
+        TraceEdge(
+            edge_id="tx:101",
+            source="acc:001",
+            target="acc:002",
+            flow_amount=1500000.5,
+            relationship_type="TRANSFER",
+            identity_confidence=0.5,
+            currency="VND",
+        )
+
+    # NaN / Inf rejected
+    with pytest.raises(ValidationError):
+        TraceEdge(
+            edge_id="tx:101",
+            source="acc:001",
+            target="acc:002",
+            flow_amount=float("nan"),
+            relationship_type="TRANSFER",
+            identity_confidence=0.5,
+        )
+
+
+def test_graph_repo_get_node_and_get_edges() -> None:
+    repo = InMemoryGraphRepository()
+    assert isinstance(repo, GraphRepository)
+
+    node = TraceNode(node_id="acc:001", entity_type="account", is_seed=True)
+    repo.add_node(node)
+    edge = TraceEdge(
+        edge_id="tx:001",
+        source="acc:001",
+        target="acc:001",
+        flow_amount=100.0,
+        relationship_type="SELF",
+        identity_confidence=1.0,
+    )
+    repo.add_edge(edge)
+
+    assert repo.get_node("acc:001") == node
+    with pytest.raises(ReferentialIntegrityError):
+        repo.get_node("missing:node")
+
+    assert repo.get_edges(("tx:001",)) == (edge,)
+    with pytest.raises(ReferentialIntegrityError):
+        repo.get_edges(("tx:001", "missing:edge"))
 
 
 def test_graph_repo_referential_integrity_seed_missing() -> None:

@@ -1,0 +1,238 @@
+/* Forensic Canvas Styles */
+
+.forensic-canvas-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #07090e;
+  overflow: hidden;
+  user-select: none;
+}
+
+.forensic-canvas-cy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.forensic-canvas-annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+
+/* Card Annotation */
+.canvas-node-card {
+  position: absolute;
+  border-radius: 6px;
+  background-color: #131b2e;
+  border: 1px solid #334155;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #f8fafc;
+}
+
+.canvas-node-card.seed-node {
+  background-color: #0c233c;
+  border: 3px solid #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+}
+
+.canvas-node-card.high-risk {
+  border: 2px solid #f43f5e;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.35);
+}
+
+.canvas-node-card.medium-risk {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.canvas-node-card.low-risk {
+  background-color: #0a0f1d;
+  border: 1px solid #334155;
+}
+
+.canvas-node-card.dimmed {
+  opacity: 0.2;
+}
+
+.canvas-node-card.selected {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.canvas-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.canvas-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.canvas-card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: rgba(51, 65, 85, 0.8);
+  color: #cbd5e1;
+}
+
+.canvas-card-badge.badge-SEED_HUB {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.canvas-card-badge.badge-SMURFING {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.canvas-card-badge.badge-SHELL_CORP {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.canvas-card-badge.badge-LAYERING {
+  background: rgba(192, 132, 252, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
+.canvas-card-badge.badge-CASHOUT {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.canvas-card-badge.badge-CRYPTO_OTC {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.canvas-card-badge.badge-BENIGN {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.canvas-card-subline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.canvas-card-risk {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+}
+
+.canvas-card-hidden-row {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(51, 65, 85, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.canvas-hidden-flow-btn {
+  pointer-events: auto;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid #475569;
+  border-radius: 4px;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.canvas-hidden-flow-btn:hover {
+  background: #334155;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* Edge Annotation */
+.canvas-edge-annotation {
+  position: absolute;
+  background: rgba(7, 9, 14, 0.92);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 10px;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+}
+
+.canvas-edge-annotation:hover {
+  border-color: #38bdf8;
+  color: #f8fafc;
+}
+
+.canvas-edge-annotation.pinned {
+  border-color: #c084fc;
+  color: #f3e8ff;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+}
+
+.canvas-edge-annotation.selected {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.canvas-edge-annotation.dimmed {
+  opacity: 0.2;
+}
+
+.canvas-edge-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
